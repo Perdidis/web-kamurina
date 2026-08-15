@@ -518,7 +518,6 @@ export default function App() {
                     await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
                     setPedidoSeleccionado(actualizado);
                     
-                    alert("¡Los cambios se guardaron correctamente!");
                     setVista('dashboard');
                     
                   } catch (err) {
