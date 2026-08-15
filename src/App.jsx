@@ -268,9 +268,11 @@ export default function App() {
     e.preventDefault();
     try {
       const fd = new FormData(e.target);
-      const id = 'PED-' + Date.now().toString().slice(-4);
+      const timestamp = Date.now();
+      const id = 'PED-' + timestamp.toString().slice(-4);
       const nuevo = { 
           id,
+          createdAt: timestamp,
           cliente: fd.get('clienteNombre'), 
           prenda: fd.get('prenda'), 
           estado: 'Eligiendo telas', 
@@ -376,6 +378,10 @@ export default function App() {
       p.prenda.toLowerCase().includes(textoBusqueda) ||
       p.id.toLowerCase().includes(textoBusqueda);
     return coincideFiltro && coincideBusqueda;
+  }).sort((a, b) => {
+    const timeA = a.createdAt || 0;
+    const timeB = b.createdAt || 0;
+    return timeB - timeA;
   });
 
   const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
@@ -431,6 +437,29 @@ export default function App() {
   return (
     <div className="min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
       <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center" />
+
+      {/* Estilo CSS exclusivo para que al imprimir se vea un PDF/Impresión limpio, sin gastar tinta negra y ordenado */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .print-ficha-exclusiva, .print-ficha-exclusiva * {
+            visibility: visible !important;
+          }
+          .print-ficha-exclusiva {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: white !important;
+            color: black !important;
+            z-index: 999999;
+            padding: 40px;
+          }
+        }
+      `}</style>
 
       {/* Navegación Responsive */}
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
@@ -877,86 +906,109 @@ export default function App() {
         )}
 
         {vista === 'detalle-cliente' && clienteSeleccionado && (
-          <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
-            <button onClick={() => setVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
-            <h2 className="text-3xl font-bold mb-1">{clienteSeleccionado.nombre}</h2>
-            <p className="text-stone-400 text-sm mb-6">{clienteSeleccionado.telefono}</p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <button onClick={() => setVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
-              <button onClick={() => window.print()} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Imprimir Ficha</button>
-              <button 
-                onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(clienteSeleccionado.id) })} 
-                className="bg-red-950/40 text-red-400 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-red-900/50 hover:bg-red-900/40 font-medium"
-              >
-                Eliminar Cliente
-              </button>
-            </div>
+          <>
+            {/* Vista normal dentro de la app */}
+            <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
+              <button onClick={() => setVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+              <h2 className="text-3xl font-bold mb-1">{clienteSeleccionado.nombre}</h2>
+              <p className="text-stone-400 text-sm mb-6">{clienteSeleccionado.telefono}</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <button onClick={() => setVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
+                <button onClick={() => window.print()} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Imprimir Ficha</button>
+                <button 
+                  onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(clienteSeleccionado.id) })} 
+                  className="bg-red-950/40 text-red-400 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-red-900/50 hover:bg-red-900/40 font-medium"
+                >
+                  Eliminar Cliente
+                </button>
+              </div>
 
-            <h3 className="text-lg font-semibold mb-3">Medidas Registradas</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mb-8 bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
-              {Object.entries(clienteSeleccionado.medidas || {}).map(([k, v]) => (
-                <div key={k} className="text-stone-300"><strong>{k}:</strong> {v || 'N/A'}</div>
-              ))}
-            </div>
+              <h3 className="text-lg font-semibold mb-3">Medidas Registradas</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mb-8 bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
+                {Object.entries(clienteSeleccionado.medidas || {}).map(([k, v]) => (
+                  <div key={k} className="text-stone-300"><strong>{k}:</strong> {v || 'N/A'}</div>
+                ))}
+              </div>
 
-            <h3 className="text-lg font-semibold mb-3">Historial de Pedidos</h3>
-            <div className="space-y-4">
-              {pedidos.filter(p => p.cliente === clienteSeleccionado.nombre).length === 0 ? (
-                <p className="text-stone-500 text-xs italic">No hay pedidos registrados para este cliente.</p>
-              ) : (
-                pedidos.filter(p => p.cliente === clienteSeleccionado.nombre).map(p => {
-                  const arrayFotos = p.fotos || (p.foto ? [p.foto] : []);
-                  return (
-                  <div key={p.id} className="bg-stone-950/40 border border-stone-800 p-4 rounded-2xl flex flex-col gap-3 relative">
-                    <button 
-                      onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar definitivamente este pedido?", action: () => borrarPedidoDefinitivo(p.id) })} 
-                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                    >
-                      ✕
-                    </button>
-                    
-                    <div className="flex justify-between items-center pr-6">
-                      <span className="text-xs font-bold">{p.prenda} ({p.estado})</span>
-                      <span className="text-xs text-stone-400">{p.entrega}</span>
-                    </div>
-                    
-                    <div className="text-sm font-semibold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio asignado'}</div>
-
-                    {arrayFotos.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {arrayFotos.map((img, i) => (
-                          <img 
-                            key={i} 
-                            src={img} 
-                            alt={`Trabajo ${i+1}`} 
-                            className="w-24 h-24 object-cover rounded-xl border border-stone-800 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
-                            onClick={() => setFotoAmpliada(img)}
-                          />
-                        ))}
+              <h3 className="text-lg font-semibold mb-3">Historial de Pedidos</h3>
+              <div className="space-y-4">
+                {pedidos.filter(p => p.cliente === clienteSeleccionado.nombre).length === 0 ? (
+                  <p className="text-stone-500 text-xs italic">No hay pedidos registrados para este cliente.</p>
+                ) : (
+                  pedidos.filter(p => p.cliente === clienteSeleccionado.nombre).map(p => {
+                    const arrayFotos = p.fotos || (p.foto ? [p.foto] : []);
+                    return (
+                    <div key={p.id} className="bg-stone-950/40 border border-stone-800 p-4 rounded-2xl flex flex-col gap-3 relative">
+                      <button 
+                        onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar definitivamente este pedido?", action: () => borrarPedidoDefinitivo(p.id) })} 
+                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                      >
+                        ✕
+                      </button>
+                      
+                      <div className="flex justify-between items-center pr-6">
+                        <span className="text-xs font-bold">{p.prenda} ({p.estado})</span>
+                        <span className="text-xs text-stone-400">{p.entrega}</span>
                       </div>
-                    )}
+                      
+                      <div className="text-sm font-semibold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio asignado'}</div>
 
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      try {
-                        const url = e.target.nuevaFoto.value;
-                        const fotosActualizadas = [...arrayFotos, url];
-                        const actualizado = { ...p, fotos: fotosActualizadas };
-                        await setDoc(doc(db, "pedidos", String(p.id)), actualizado, { merge: true });
-                        e.target.reset();
-                      } catch (err) {
-                        alert("Error al agregar foto: " + err.message);
-                      }
-                    }} className="flex flex-col sm:flex-row gap-2 mt-1">
-                      <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs" required />
-                      <button type="submit" className="bg-stone-800 px-4 py-2 rounded-xl text-xs border border-stone-700 hover:bg-stone-700 font-medium">Agregar</button>
-                    </form>
-                  </div>
-                )})
-              )}
+                      {arrayFotos.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                          {arrayFotos.map((img, i) => (
+                            <img 
+                              key={i} 
+                              src={img} 
+                              alt={`Trabajo ${i+1}`} 
+                              className="w-24 h-24 object-cover rounded-xl border border-stone-800 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
+                              onClick={() => setFotoAmpliada(img)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                          const url = e.target.nuevaFoto.value;
+                          const fotosActualizadas = [...arrayFotos, url];
+                          const actualizado = { ...p, fotos: fotosActualizadas };
+                          await setDoc(doc(db, "pedidos", String(p.id)), actualizado, { merge: true });
+                          e.target.reset();
+                        } catch (err) {
+                          alert("Error al agregar foto: " + err.message);
+                        }
+                      }} className="flex flex-col sm:flex-row gap-2 mt-1">
+                        <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs" required />
+                        <button type="submit" className="bg-stone-800 px-4 py-2 rounded-xl text-xs border border-stone-700 hover:bg-stone-700 font-medium">Agregar</button>
+                      </form>
+                    </div>
+                  )})
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Plantilla limpia y exclusiva para impresión (PDF / Papel) */}
+            <div className="print-ficha-exclusiva hidden">
+              <div className="border-b-2 border-black pb-4 mb-6">
+                <h1 className="text-3xl font-bold tracking-tight text-black">ATELIER - FICHA DE CLIENTE</h1>
+              </div>
+              <div className="mb-6 space-y-1">
+                <p className="text-xl font-bold text-black">Cliente: {clienteSeleccionado.nombre}</p>
+                <p className="text-sm text-gray-700">Teléfono: {clienteSeleccionado.telefono}</p>
+              </div>
+              <h3 className="text-md font-bold uppercase tracking-wider border-b border-gray-400 pb-1 mb-4 text-black">Medidas Registradas</h3>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                {Object.entries(clienteSeleccionado.medidas || {}).map(([k, v]) => (
+                  <div key={k} className="flex justify-between border-b border-gray-200 py-1.5">
+                    <span className="text-gray-800 font-medium">{k}:</span>
+                    <span className="font-bold text-black">{v || 'N/A'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
         {vista === 'calculadora' && (
