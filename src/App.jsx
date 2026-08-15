@@ -304,7 +304,7 @@ export default function App() {
           precio: precioFinal,
           materialesCosto: materiales,
           manoObraCosto: manoObra,
-          gastos: materiales // Asigna automáticamente los gastos calculados (tela + avíos)
+          gastos: materiales
         };
         await setDoc(doc(db, "pedidos", String(pedidoId)), actualizado, { merge: true });
       }
@@ -370,8 +370,8 @@ export default function App() {
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
-    const textoBusqueda = busquedaDashboard.toLowerCase();
-    const coincideBusqueda = !busquedaDashboard || 
+    const textoBusqueda = busquedaDashboard.trim().toLowerCase();
+    const coincideBusqueda = !textoBusqueda || 
       p.cliente.toLowerCase().includes(textoBusqueda) || 
       p.prenda.toLowerCase().includes(textoBusqueda) ||
       p.id.toLowerCase().includes(textoBusqueda);
@@ -384,10 +384,8 @@ export default function App() {
   const gananciasPorMes = pedidos.reduce((acc, p) => {
     if (!p.entrega || p.precio <= 0) return acc;
     const mesAnio = p.entrega.slice(0, 7); // Formato YYYY-MM
-    const mat = p.materialesCosto || 0;
-    const mano = p.manoObraCosto || (p.precio > 0 ? p.precio * 0.4 : 0);
     const gastos = p.gastos || 0;
-    const gananciaPedido = mano + (p.precio - (mat + mano + gastos));
+    const gananciaPedido = p.precio > 0 ? (p.precio - gastos) : 0;
     
     if (!acc[mesAnio]) {
       acc[mesAnio] = { ingresos: 0, ganancia: 0, cantidad: 0, pedidos: [] };
@@ -484,10 +482,8 @@ export default function App() {
                 <p className="col-span-full text-stone-500 text-center py-10 italic">No se encontraron pedidos activos con esos criterios.</p>
               ) : (
                 pedidosVisibles.map(p => {
-                  const mat = p.materialesCosto || 0;
-                  const mano = p.manoObraCosto || 0;
                   const gastos = p.gastos || 0;
-                  const gananciaPedido = p.precio > 0 ? mano + (p.precio - (mat + mano + gastos)) : 0;
+                  const gananciaPedido = p.precio > 0 ? (p.precio - gastos) : 0;
                   return (
                     <div 
                       key={p.id} 
