@@ -379,8 +379,8 @@ export default function App() {
       p.id.toLowerCase().includes(textoBusqueda);
     return coincideFiltro && coincideBusqueda;
   }).sort((a, b) => {
-    const timeA = a.createdAt || Number(a.id.replace('PED-', '')) || 0;
-    const timeB = b.createdAt || Number(b.id.replace('PED-', '')) || 0;
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
     return timeB - timeA;
   });
 
