@@ -269,7 +269,10 @@ export default function App() {
     try {
       const fd = new FormData(e.target);
       const timestamp = Date.now();
-      const id = 'PED-' + timestamp;
+      
+      const numeroSecuencial = pedidos.length > 0 ? pedidos.length + 1 : 1;
+      const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
+
       const nuevo = { 
           id,
           createdAt: timestamp,
