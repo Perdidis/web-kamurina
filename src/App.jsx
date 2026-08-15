@@ -42,6 +42,10 @@ export default function App() {
   const [loginUser, setLoginUser] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
+  // Estados para búsqueda y filtros del Dashboard
+  const [busquedaDashboard, setBusquedaDashboard] = useState('');
+  const [filtroEstadoDashboard, setFiltroEstadoDashboard] = useState('TODOS');
+
   // Estados para detalles y edición
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [telaSeleccionada, setTelaSeleccionada] = useState(null);
@@ -299,7 +303,8 @@ export default function App() {
           ...pedido, 
           precio: precioFinal,
           materialesCosto: materiales,
-          manoObraCosto: manoObra
+          manoObraCosto: manoObra,
+          gastos: materiales // Asigna automáticamente los gastos calculados (tela + avíos)
         };
         await setDoc(doc(db, "pedidos", String(pedidoId)), actualizado, { merge: true });
       }
@@ -362,7 +367,17 @@ export default function App() {
     }
   };
 
-  const pedidosVisibles = pedidos.filter(p => !p.ocultoDashboard);
+  const pedidosVisibles = pedidos.filter(p => {
+    if (p.ocultoDashboard) return false;
+    const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
+    const textoBusqueda = busquedaDashboard.toLowerCase();
+    const coincideBusqueda = !busquedaDashboard || 
+      p.cliente.toLowerCase().includes(textoBusqueda) || 
+      p.prenda.toLowerCase().includes(textoBusqueda) ||
+      p.id.toLowerCase().includes(textoBusqueda);
+    return coincideFiltro && coincideBusqueda;
+  });
+
   const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
   // Agrupación de ganancias mensuales incluyendo lista de pedidos
@@ -435,61 +450,91 @@ export default function App() {
 
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {pedidosVisibles.length === 0 ? (
-              <p className="col-span-full text-stone-500 text-center py-10 italic">No existen pedidos activos.</p>
-            ) : (
-              pedidosVisibles.map(p => {
-                const mat = p.materialesCosto || 0;
-                const mano = p.manoObraCosto || 0;
-                const gastos = p.gastos || 0;
-                const gananciaPedido = p.precio > 0 ? mano + (p.precio - (mat + mano + gastos)) : 0;
-                return (
-                  <div 
-                    key={p.id} 
-                    onClick={() => { setPedidoSeleccionado(p); setVista('detalle-pedido'); }} 
-                    className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
+          <div>
+            {/* Buscador y Filtros Rápidos */}
+            <div className="mb-6 flex flex-col gap-4">
+              <input 
+                type="text" 
+                placeholder="Buscar pedido por cliente, prenda o ID..." 
+                value={busquedaDashboard}
+                onChange={(e) => setBusquedaDashboard(e.target.value)}
+                className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl outline-none text-sm text-white backdrop-blur-md" 
+              />
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button 
+                  onClick={() => setFiltroEstadoDashboard('TODOS')} 
+                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${filtroEstadoDashboard === 'TODOS' ? 'bg-white text-stone-950' : 'bg-stone-900/40 text-stone-400 border border-stone-800'}`}
+                >
+                  Todos
+                </button>
+                {ESTADOS_PEDIDO.map(est => (
+                  <button 
+                    key={est}
+                    onClick={() => setFiltroEstadoDashboard(est)} 
+                    className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${filtroEstadoDashboard === est ? 'bg-white text-stone-950' : 'bg-stone-900/40 text-stone-400 border border-stone-800'}`}
                   >
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setModalConfirm({ 
-                          isOpen: true, 
-                          text: "¿Qué deseas hacer con este pedido?", 
-                          buttons: [
-                            { text: "Solo quitar del Dashboard", action: () => ocultarPedidoDashboard(p.id), style: "bg-stone-800 text-white hover:bg-stone-700" },
-                            { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
-                          ]
-                        }); 
-                      }} 
-                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                    >
-                      ✕
-                    </button>
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
-                      <button onClick={(e) => { e.stopPropagation(); togglePago(p.id); }} className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800'}`}>
-                        {p.pagado ? 'Pagado' : 'Pendiente'}
-                      </button>
-                    </div>
-                    <h3 className="text-lg font-semibold">{p.cliente}</h3>
-                    <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>
-                    {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
-                    
-                    <div className="mb-4">
-                      <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio'}</p>
-                      {p.precio > 0 && (
-                        <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
-                      )}
-                    </div>
+                    {est}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                    <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => actualizarEstado(p.id, e.target.value)} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
-                      {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
-                  </div>
-                );
-              })
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {pedidosVisibles.length === 0 ? (
+                <p className="col-span-full text-stone-500 text-center py-10 italic">No se encontraron pedidos activos con esos criterios.</p>
+              ) : (
+                pedidosVisibles.map(p => {
+                  const mat = p.materialesCosto || 0;
+                  const mano = p.manoObraCosto || 0;
+                  const gastos = p.gastos || 0;
+                  const gananciaPedido = p.precio > 0 ? mano + (p.precio - (mat + mano + gastos)) : 0;
+                  return (
+                    <div 
+                      key={p.id} 
+                      onClick={() => { setPedidoSeleccionado(p); setVista('detalle-pedido'); }} 
+                      className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
+                    >
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setModalConfirm({ 
+                            isOpen: true, 
+                            text: "¿Qué deseas hacer con este pedido?", 
+                            buttons: [
+                              { text: "Solo quitar del Dashboard", action: () => ocultarPedidoDashboard(p.id), style: "bg-stone-800 text-white hover:bg-stone-700" },
+                              { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
+                            ]
+                          }); 
+                        }} 
+                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                      >
+                        ✕
+                      </button>
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
+                        <button onClick={(e) => { e.stopPropagation(); togglePago(p.id); }} className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800'}`}>
+                          {p.pagado ? 'Pagado' : 'Pendiente'}
+                        </button>
+                      </div>
+                      <h3 className="text-lg font-semibold">{p.cliente}</h3>
+                      <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>
+                      {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
+                      
+                      <div className="mb-4">
+                        <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio'}</p>
+                        {p.precio > 0 && (
+                          <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
+                        )}
+                      </div>
+
+                      <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => actualizarEstado(p.id, e.target.value)} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
+                        {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         )}
 
@@ -546,7 +591,7 @@ export default function App() {
                       </div>
                       <div>
                           <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
-                          <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos || ''} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                          <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
                       </div>
                       <div className="col-span-1 sm:col-span-2">
                           <label className="text-stone-500 pl-1 text-xs">Estado</label>
@@ -843,6 +888,7 @@ export default function App() {
             
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <button onClick={() => setVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
+              <button onClick={() => window.print()} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Imprimir Ficha</button>
               <button 
                 onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(clienteSeleccionado.id) })} 
                 className="bg-red-950/40 text-red-400 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-red-900/50 hover:bg-red-900/40 font-medium"
