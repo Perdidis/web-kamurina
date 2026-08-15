@@ -48,9 +48,12 @@ export default function App() {
   const [avioSeleccionado, setAvioSeleccionado] = useState(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   
+  // Estado para prevenir doble clic al guardar
+  const [isSaving, setIsSaving] = useState(false);
+
   // Estado para la foto ampliada y confirmación UI
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
-  const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null });
+  const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
 
   // Estados sincronizados con Firebase Firestore
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
@@ -58,7 +61,7 @@ export default function App() {
   const [telas, setTelas] = useState(INITIAL_TELAS);
   const [avios, setAvios] = useState(INITIAL_AVIOS);
 
-  const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0 });
+  const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
   useEffect(() => {
     if (!user) return;
@@ -95,7 +98,8 @@ export default function App() {
   const materiales = (metrosCalculados * calc.costoMetro) + calc.avios;
   const manoObra = calc.horas * calc.valorHora;
   const costoTotal = materiales + manoObra;
-  const precioFinal = costoTotal * (1 + calc.margen / 100);
+  const calculoNormal = costoTotal * (1 + calc.margen / 100);
+  const precioFinal = calc.precioPersonalizado > 0 ? calc.precioPersonalizado : calculoNormal;
   const gananciaNeta = manoObra + (precioFinal - costoTotal);
 
   const borrarCliente = async (id) => {
@@ -149,6 +153,8 @@ export default function App() {
 
   const guardarCliente = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const fd = new FormData(e.target);
       const medidas = {};
@@ -159,6 +165,8 @@ export default function App() {
       setVista('clientes');
     } catch (err) {
       alert("Error al guardar cliente: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -270,7 +278,8 @@ export default function App() {
           fotos: fd.get('foto') ? [fd.get('foto')] : [],
           ocultoDashboard: false,
           materialesCosto: 0,
-          manoObraCosto: 0
+          manoObraCosto: 0,
+          gastos: 0
       };
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
       setVista('dashboard');
@@ -346,7 +355,7 @@ export default function App() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (loginUser === 'Kamurina' && loginPass === 'glj-2007') {
+    if (loginUser.trim() === 'Kamurina' && loginPass === 'glj-2007') {
         setUser({ uid: 'Kamurina' });
     } else {
         setError('Usuario o contraseña incorrectos');
@@ -362,7 +371,8 @@ export default function App() {
     const mesAnio = p.entrega.slice(0, 7); // Formato YYYY-MM
     const mat = p.materialesCosto || 0;
     const mano = p.manoObraCosto || (p.precio > 0 ? p.precio * 0.4 : 0);
-    const gananciaPedido = mano + (p.precio - (mat + mano));
+    const gastos = p.gastos || 0;
+    const gananciaPedido = mano + (p.precio - (mat + mano + gastos));
     
     if (!acc[mesAnio]) {
       acc[mesAnio] = { ingresos: 0, ganancia: 0, cantidad: 0, pedidos: [] };
@@ -432,7 +442,8 @@ export default function App() {
               pedidosVisibles.map(p => {
                 const mat = p.materialesCosto || 0;
                 const mano = p.manoObraCosto || 0;
-                const gananciaPedido = p.precio > 0 ? mano + (p.precio - (mat + mano)) : 0;
+                const gastos = p.gastos || 0;
+                const gananciaPedido = p.precio > 0 ? mano + (p.precio - (mat + mano + gastos)) : 0;
                 return (
                   <div 
                     key={p.id} 
@@ -442,7 +453,14 @@ export default function App() {
                     <button 
                       onClick={(e) => { 
                         e.stopPropagation(); 
-                        setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres quitar este pedido del Dashboard? (Seguirá en el historial del cliente)", action: () => ocultarPedidoDashboard(p.id) }); 
+                        setModalConfirm({ 
+                          isOpen: true, 
+                          text: "¿Qué deseas hacer con este pedido?", 
+                          buttons: [
+                            { text: "Solo quitar del Dashboard", action: () => ocultarPedidoDashboard(p.id), style: "bg-stone-800 text-white hover:bg-stone-700" },
+                            { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
+                          ]
+                        }); 
                       }} 
                       className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
                     >
@@ -494,10 +512,15 @@ export default function App() {
                         entrega: fd.get('entrega'),
                         tela: fd.get('tela'),
                         precio: Number(fd.get('precio')),
+                        gastos: Number(fd.get('gastos')) || 0,
                         estado: fd.get('estado')
                     };
-                    await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado);
+                    await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
                     setPedidoSeleccionado(actualizado);
+                    
+                    alert("¡Los cambios se guardaron correctamente!");
+                    setVista('dashboard');
+                    
                   } catch (err) {
                     alert("Error al actualizar pedido: " + err.message);
                   }
@@ -521,6 +544,10 @@ export default function App() {
                       <div>
                           <label className="text-stone-500 pl-1 text-xs">Precio ($)</label>
                           <input name="precio" type="number" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                      </div>
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
+                          <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos || ''} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
                       </div>
                       <div className="col-span-1 sm:col-span-2">
                           <label className="text-stone-500 pl-1 text-xs">Estado</label>
@@ -584,7 +611,13 @@ export default function App() {
                ))}
              </div>
              
-             <button type="submit" className="w-full mt-4 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar</button>
+             <button 
+               type="submit" 
+               disabled={isSaving} 
+               className={`w-full mt-4 bg-white text-stone-950 py-3 rounded-xl font-bold transition-opacity ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+             >
+               {isSaving ? 'Guardando...' : 'Guardar'}
+             </button>
            </form>
         )}
 
@@ -914,6 +947,7 @@ export default function App() {
                 <input type="number" placeholder="Horas" value={calc.horas || ''} onChange={e => setCalc({...calc, horas: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none" />
                 <input type="number" placeholder="Valor Hora ($)" value={calc.valorHora || ''} onChange={e => setCalc({...calc, valorHora: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none" />
                 <input type="number" placeholder="Margen %" value={calc.margen || ''} onChange={e => setCalc({...calc, margen: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none" />
+                <input type="number" placeholder="Precio Personalizado ($)" value={calc.precioPersonalizado || ''} onChange={e => setCalc({...calc, precioPersonalizado: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none sm:col-span-2" />
               </div>
               <div className="text-2xl font-bold mb-6 text-center">Total a Cobrar: ${precioFinal.toLocaleString()}</div>
               <form onSubmit={asignarPrecioAPedido} className="border-t border-stone-800 pt-6">
@@ -1047,29 +1081,53 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal UI de Confirmación */}
+      {/* Modal UI de Confirmación con Soporte para Múltiples Botones */}
       {modalConfirm.isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4">
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
             <h3 className="text-xl font-bold mb-4 text-white">Confirmar Acción</h3>
             <p className="text-stone-400 text-sm mb-8">{modalConfirm.text}</p>
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setModalConfirm({ isOpen: false, text: '', action: null })} 
-                className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => {
-                  if (modalConfirm.action) modalConfirm.action();
-                  setModalConfirm({ isOpen: false, text: '', action: null });
-                }} 
-                className="flex-1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
-              >
-                Eliminar
-              </button>
-            </div>
+            
+            {modalConfirm.buttons ? (
+              <div className="flex flex-col gap-3">
+                {modalConfirm.buttons.map((btn, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => {
+                      btn.action();
+                      setModalConfirm({ isOpen: false, text: '', action: null, buttons: null });
+                    }}
+                    className={`w-full py-3 rounded-xl font-bold transition-colors ${btn.style}`}
+                  >
+                    {btn.text}
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setModalConfirm({ isOpen: false, text: '', action: null, buttons: null })} 
+                  className="w-full mt-2 text-stone-500 hover:text-white text-sm transition-colors py-2"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setModalConfirm({ isOpen: false, text: '', action: null, buttons: null })} 
+                  className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => {
+                    if (modalConfirm.action) modalConfirm.action();
+                    setModalConfirm({ isOpen: false, text: '', action: null, buttons: null });
+                  }} 
+                  className="flex-1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
