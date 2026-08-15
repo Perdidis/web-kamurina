@@ -264,12 +264,15 @@ export default function App() {
     }
   };
 
-  const crearPedido = async (e) => {
+const crearPedido = async (e) => {
     e.preventDefault();
     try {
       const fd = new FormData(e.target);
       const timestamp = Date.now();
-      const id = 'PED-' + timestamp;
+      
+      const numeroSecuencial = pedidos.length > 0 ? pedidos.length + 1 : 1;
+      const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
+
       const nuevo = { 
           id,
           createdAt: timestamp,
@@ -294,6 +297,7 @@ export default function App() {
     }
   };
 
+  const asignarPrecioAPedido = async (e) => {
   const asignarPrecioAPedido = async (e) => {
     e.preventDefault();
     try {
@@ -1228,4 +1232,5 @@ export default function App() {
 
     </div>
   );
+  }
 }
