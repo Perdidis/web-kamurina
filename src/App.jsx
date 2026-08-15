@@ -18,11 +18,8 @@ const analytics = getAnalytics(app);
 const db = getFirestore(app);
 
 const INITIAL_CLIENTES = [];
-
 const INITIAL_PEDIDOS = [];
-
 const INITIAL_TELAS = [];
-
 const INITIAL_AVIOS = [];
 
 const MEDIDAS_LISTA = [
@@ -100,7 +97,10 @@ export default function App() {
   const precioFinal = costoTotal * (1 + calc.margen / 100);
   const gananciaNeta = manoObra + (precioFinal - costoTotal);
 
+  // --- ACÁ SE AGREGARON LAS CONFIRMACIONES ---
+
   const borrarCliente = async (id) => {
+    if (!window.confirm("¿Estás segura de que quieres eliminar este cliente?")) return;
     try {
       await deleteDoc(doc(db, "clientes", String(id)));
       if (clienteSeleccionado?.id === id) setVista('clientes');
@@ -110,6 +110,7 @@ export default function App() {
   };
   
   const borrarTela = async (id) => {
+    if (!window.confirm("¿Estás segura de que quieres eliminar esta tela del catálogo?")) return;
     try {
       await deleteDoc(doc(db, "telas", String(id)));
       if (telaSeleccionada?.id === id) setVista('catalogo');
@@ -119,6 +120,7 @@ export default function App() {
   };
 
   const borrarAvio = async (id) => {
+    if (!window.confirm("¿Estás segura de que quieres eliminar este avío del catálogo?")) return;
     try {
       await deleteDoc(doc(db, "avios", String(id)));
       if (avioSeleccionado?.id === id) setVista('catalogo-avios');
@@ -126,7 +128,30 @@ export default function App() {
       alert("Error al eliminar avío: " + err.message);
     }
   };
-  
+
+  const ocultarPedidoDashboard = async (id) => {
+    if (!window.confirm("¿Estás segura de que quieres quitar este pedido del Dashboard? (Seguirá en el historial del cliente)")) return;
+    try {
+      const pedido = pedidos.find(p => p.id === id);
+      if (pedido) {
+        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, ocultoDashboard: true }, { merge: true });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const borrarPedidoDefinitivo = async (id) => {
+    if (!window.confirm("¿Estás segura de que quieres eliminar definitivamente este pedido?")) return;
+    try {
+      await deleteDoc(doc(db, "pedidos", String(id)));
+    } catch (err) {
+      alert("Error al borrar pedido: " + err.message);
+    }
+  };
+
+  // -------------------------------------------
+
   const actualizarStock = async (id, nuevoStock) => {
     try {
       const tela = telas.find(t => t.id === id);
@@ -299,25 +324,6 @@ export default function App() {
       setVista('dashboard');
     } catch (err) {
       alert("Error al asignar precio: " + err.message);
-    }
-  };
-
-  const ocultarPedidoDashboard = async (id) => {
-    try {
-      const pedido = pedidos.find(p => p.id === id);
-      if (pedido) {
-        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, ocultoDashboard: true }, { merge: true });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const borrarPedidoDefinitivo = async (id) => {
-    try {
-      await deleteDoc(doc(db, "pedidos", String(id)));
-    } catch (err) {
-      alert("Error al borrar pedido: " + err.message);
     }
   };
 
