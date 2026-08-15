@@ -48,8 +48,9 @@ export default function App() {
   const [avioSeleccionado, setAvioSeleccionado] = useState(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   
-  // Estado para la foto ampliada
+  // Estado para la foto ampliada y confirmación UI
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null });
 
   // Estados sincronizados con Firebase Firestore
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
@@ -97,10 +98,7 @@ export default function App() {
   const precioFinal = costoTotal * (1 + calc.margen / 100);
   const gananciaNeta = manoObra + (precioFinal - costoTotal);
 
-  // --- ACÁ SE AGREGARON LAS CONFIRMACIONES ---
-
   const borrarCliente = async (id) => {
-    if (!window.confirm("¿Estás segura de que quieres eliminar este cliente?")) return;
     try {
       await deleteDoc(doc(db, "clientes", String(id)));
       if (clienteSeleccionado?.id === id) setVista('clientes');
@@ -110,7 +108,6 @@ export default function App() {
   };
   
   const borrarTela = async (id) => {
-    if (!window.confirm("¿Estás segura de que quieres eliminar esta tela del catálogo?")) return;
     try {
       await deleteDoc(doc(db, "telas", String(id)));
       if (telaSeleccionada?.id === id) setVista('catalogo');
@@ -120,7 +117,6 @@ export default function App() {
   };
 
   const borrarAvio = async (id) => {
-    if (!window.confirm("¿Estás segura de que quieres eliminar este avío del catálogo?")) return;
     try {
       await deleteDoc(doc(db, "avios", String(id)));
       if (avioSeleccionado?.id === id) setVista('catalogo-avios');
@@ -128,29 +124,6 @@ export default function App() {
       alert("Error al eliminar avío: " + err.message);
     }
   };
-
-  const ocultarPedidoDashboard = async (id) => {
-    if (!window.confirm("¿Estás segura de que quieres quitar este pedido del Dashboard? (Seguirá en el historial del cliente)")) return;
-    try {
-      const pedido = pedidos.find(p => p.id === id);
-      if (pedido) {
-        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, ocultoDashboard: true }, { merge: true });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const borrarPedidoDefinitivo = async (id) => {
-    if (!window.confirm("¿Estás segura de que quieres eliminar definitivamente este pedido?")) return;
-    try {
-      await deleteDoc(doc(db, "pedidos", String(id)));
-    } catch (err) {
-      alert("Error al borrar pedido: " + err.message);
-    }
-  };
-
-  // -------------------------------------------
 
   const actualizarStock = async (id, nuevoStock) => {
     try {
@@ -327,6 +300,25 @@ export default function App() {
     }
   };
 
+  const ocultarPedidoDashboard = async (id) => {
+    try {
+      const pedido = pedidos.find(p => p.id === id);
+      if (pedido) {
+        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, ocultoDashboard: true }, { merge: true });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const borrarPedidoDefinitivo = async (id) => {
+    try {
+      await deleteDoc(doc(db, "pedidos", String(id)));
+    } catch (err) {
+      alert("Error al borrar pedido: " + err.message);
+    }
+  };
+
   const actualizarEstado = async (id, nuevoEstado) => {
     try {
       const pedido = pedidos.find(p => p.id === id);
@@ -447,7 +439,15 @@ export default function App() {
                     onClick={() => { setPedidoSeleccionado(p); setVista('detalle-pedido'); }} 
                     className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
                   >
-                    <button onClick={(e) => { e.stopPropagation(); ocultarPedidoDashboard(p.id); }} className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs">✕</button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres quitar este pedido del Dashboard? (Seguirá en el historial del cliente)", action: () => ocultarPedidoDashboard(p.id) }); 
+                      }} 
+                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                    >
+                      ✕
+                    </button>
                     <div className="flex justify-between items-start mb-4">
                       <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
                       <button onClick={(e) => { e.stopPropagation(); togglePago(p.id); }} className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800'}`}>
@@ -682,7 +682,15 @@ export default function App() {
               ) : (
                   telas.map(t => (
                     <div key={t.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
-                      <button onClick={(e) => { e.stopPropagation(); borrarTela(t.id); }} className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs">✕</button>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar esta tela del catálogo?", action: () => borrarTela(t.id) }); 
+                        }} 
+                        className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
+                      >
+                        ✕
+                      </button>
                       <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); setVista('detalle-tela'); }} />
                       <div className="p-4">
                         <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); setVista('detalle-tela'); }}>{t.nombre}</h3>
@@ -711,7 +719,15 @@ export default function App() {
               ) : (
                   avios.map(a => (
                     <div key={a.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
-                      <button onClick={(e) => { e.stopPropagation(); borrarAvio(a.id); }} className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs">✕</button>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este avío del catálogo?", action: () => borrarAvio(a.id) }); 
+                        }} 
+                        className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
+                      >
+                        ✕
+                      </button>
                       <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); setVista('detalle-avio'); }} />
                       <div className="p-4">
                         <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); setVista('detalle-avio'); }}>{a.nombre}</h3>
@@ -766,7 +782,15 @@ export default function App() {
               ) : (
                   clientesFiltrados.map(c => (
                     <div key={c.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative">
-                      <button onClick={(e) => { e.stopPropagation(); borrarCliente(c.id); }} className="absolute top-4 right-4 text-stone-600 hover:text-red-400">✕</button>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(c.id) }); 
+                        }} 
+                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400"
+                      >
+                        ✕
+                      </button>
                       <h3 className="text-lg font-semibold cursor-pointer hover:underline" onClick={() => { setClienteSeleccionado(c); setVista('detalle-cliente'); }}>{c.nombre}</h3>
                       <p className="text-stone-400 text-xs mb-4">{c.telefono}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-stone-500">
@@ -787,7 +811,12 @@ export default function App() {
             
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <button onClick={() => setVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
-              <button onClick={() => borrarCliente(clienteSeleccionado.id)} className="bg-red-950/40 text-red-400 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-red-900/50 hover:bg-red-900/40 font-medium">Eliminar Cliente</button>
+              <button 
+                onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(clienteSeleccionado.id) })} 
+                className="bg-red-950/40 text-red-400 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-red-900/50 hover:bg-red-900/40 font-medium"
+              >
+                Eliminar Cliente
+              </button>
             </div>
 
             <h3 className="text-lg font-semibold mb-3">Medidas Registradas</h3>
@@ -806,7 +835,12 @@ export default function App() {
                   const arrayFotos = p.fotos || (p.foto ? [p.foto] : []);
                   return (
                   <div key={p.id} className="bg-stone-950/40 border border-stone-800 p-4 rounded-2xl flex flex-col gap-3 relative">
-                    <button onClick={() => borrarPedidoDefinitivo(p.id)} className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs">✕</button>
+                    <button 
+                      onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar definitivamente este pedido?", action: () => borrarPedidoDefinitivo(p.id) })} 
+                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                    >
+                      ✕
+                    </button>
                     
                     <div className="flex justify-between items-center pr-6">
                       <span className="text-xs font-bold">{p.prenda} ({p.estado})</span>
@@ -1012,6 +1046,34 @@ export default function App() {
           />
         </div>
       )}
+
+      {/* Modal UI de Confirmación */}
+      {modalConfirm.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4">
+          <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <h3 className="text-xl font-bold mb-4 text-white">Confirmar Acción</h3>
+            <p className="text-stone-400 text-sm mb-8">{modalConfirm.text}</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setModalConfirm({ isOpen: false, text: '', action: null })} 
+                className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  if (modalConfirm.action) modalConfirm.action();
+                  setModalConfirm({ isOpen: false, text: '', action: null });
+                }} 
+                className="flex-1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
