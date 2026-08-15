@@ -269,7 +269,7 @@ export default function App() {
     try {
       const fd = new FormData(e.target);
       const timestamp = Date.now();
-      const id = 'PED-' + timestamp.toString().slice(-4);
+      const id = 'PED-' + timestamp;
       const nuevo = { 
           id,
           createdAt: timestamp,
@@ -448,15 +448,16 @@ export default function App() {
             visibility: visible !important;
           }
           .print-ficha-exclusiva {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
             background: white !important;
             color: black !important;
             z-index: 999999;
-            padding: 40px;
+            padding: 20px;
+            display: block !important;
           }
         }
       `}</style>
