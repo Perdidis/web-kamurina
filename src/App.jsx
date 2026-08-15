@@ -67,6 +67,51 @@ export default function App() {
 
   const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
+  // Sincronizar el botón "Atrás" físico de Android / navegador con el historial interno de vistas
+  useEffect(() => {
+    if (!user) return;
+    
+    // Al iniciar sesión, aseguramos que la ruta inicial sea el dashboard en el historial
+    window.history.replaceState({ vista: 'dashboard' }, '');
+
+    const handlePopState = (event) => {
+      // Si hay un modal abierto, lo cerramos primero en lugar de cambiar de vista
+      if (fotoAmpliada) {
+        setFotoAmpliada(null);
+        window.history.pushState({ vista }, '');
+        return;
+      }
+      if (modalConfirm.isOpen) {
+        setModalConfirm({ isOpen: false, text: '', action: null, buttons: null });
+        window.history.pushState({ vista }, '');
+        return;
+      }
+      if (menuAbierto) {
+        setMenuAbierto(false);
+        window.history.pushState({ vista }, '');
+        return;
+      }
+
+      // Si el historial del navegador trae una vista guardada, la restauramos
+      if (event.state && event.state.vista) {
+        setVista(event.state.vista);
+      } else {
+        // Por defecto si no hay estado, vamos al dashboard
+        setVista('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [user, fotoAmpliada, modalConfirm.isOpen, menuAbierto, vista]);
+
+  // Función segura para cambiar de vista registrando el historial de navegación
+  const cambiarVista = (nuevaVista) => {
+    window.history.pushState({ vista: nuevaVista }, '');
+    setVista(nuevaVista);
+    setMenuAbierto(false);
+  };
+
   useEffect(() => {
     if (!user) return;
     
@@ -109,7 +154,7 @@ export default function App() {
   const borrarCliente = async (id) => {
     try {
       await deleteDoc(doc(db, "clientes", String(id)));
-      if (clienteSeleccionado?.id === id) setVista('clientes');
+      if (clienteSeleccionado?.id === id) cambiarVista('clientes');
     } catch (err) {
       alert("Error al eliminar cliente: " + err.message);
     }
@@ -118,7 +163,7 @@ export default function App() {
   const borrarTela = async (id) => {
     try {
       await deleteDoc(doc(db, "telas", String(id)));
-      if (telaSeleccionada?.id === id) setVista('catalogo');
+      if (telaSeleccionada?.id === id) cambiarVista('catalogo');
     } catch (err) {
       alert("Error al eliminar tela: " + err.message);
     }
@@ -127,7 +172,7 @@ export default function App() {
   const borrarAvio = async (id) => {
     try {
       await deleteDoc(doc(db, "avios", String(id)));
-      if (avioSeleccionado?.id === id) setVista('catalogo-avios');
+      if (avioSeleccionado?.id === id) cambiarVista('catalogo-avios');
     } catch (err) {
       alert("Error al eliminar avío: " + err.message);
     }
@@ -166,7 +211,7 @@ export default function App() {
       const id = Date.now();
       const nuevo = { id, nombre: fd.get('nombre'), telefono: fd.get('telefono'), medidas };
       await setDoc(doc(db, "clientes", String(id)), nuevo);
-      setVista('clientes');
+      cambiarVista('clientes');
     } catch (err) {
       alert("Error al guardar cliente: " + err.message);
     } finally {
@@ -183,7 +228,7 @@ export default function App() {
       const actualizado = { ...clienteSeleccionado, nombre: fd.get('nombre'), telefono: fd.get('telefono'), medidas };
       await setDoc(doc(db, "clientes", String(clienteSeleccionado.id)), actualizado);
       setClienteSeleccionado(actualizado);
-      setVista('detalle-cliente');
+      cambiarVista('detalle-cliente');
     } catch (err) {
       alert("Error al actualizar cliente: " + err.message);
     }
@@ -204,7 +249,7 @@ export default function App() {
         foto: fd.get('foto') 
       };
       await setDoc(doc(db, "telas", String(id)), nueva);
-      setVista('catalogo');
+      cambiarVista('catalogo');
     } catch (err) {
       alert("Error al guardar tela: " + err.message);
     }
@@ -225,7 +270,7 @@ export default function App() {
       };
       await setDoc(doc(db, "telas", String(telaSeleccionada.id)), actualizada);
       setTelaSeleccionada(actualizada);
-      setVista('detalle-tela');
+      cambiarVista('detalle-tela');
     } catch (err) {
       alert("Error al actualizar tela: " + err.message);
     }
@@ -238,7 +283,7 @@ export default function App() {
       const id = Date.now();
       const nuevo = { id, nombre: fd.get('nombre'), descripcion: fd.get('desc'), uso: fd.get('uso'), stock: fd.get('stock'), foto: fd.get('foto') };
       await setDoc(doc(db, "avios", String(id)), nuevo);
-      setVista('catalogo-avios');
+      cambiarVista('catalogo-avios');
     } catch (err) {
       alert("Error al guardar avío: " + err.message);
     }
@@ -258,7 +303,7 @@ export default function App() {
       };
       await setDoc(doc(db, "avios", String(avioSeleccionado.id)), actualizado);
       setAvioSeleccionado(actualizado);
-      setVista('detalle-avio');
+      cambiarVista('detalle-avio');
     } catch (err) {
       alert("Error al actualizar avío: " + err.message);
     }
@@ -291,7 +336,7 @@ export default function App() {
           gastos: 0
       };
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
-      setVista('dashboard');
+      cambiarVista('dashboard');
     } catch (err) {
       alert("Error al crear pedido: " + err.message);
     }
@@ -313,7 +358,7 @@ export default function App() {
         };
         await setDoc(doc(db, "pedidos", String(pedidoId)), actualizado, { merge: true });
       }
-      setVista('dashboard');
+      cambiarVista('dashboard');
     } catch (err) {
       alert("Error al asignar precio: " + err.message);
     }
@@ -367,6 +412,7 @@ export default function App() {
     e.preventDefault();
     if (loginUser.trim() === 'Kamurina' && loginPass === 'glj-2007') {
         setUser({ uid: 'Kamurina' });
+        window.history.replaceState({ vista: 'dashboard' }, '');
     } else {
         setError('Usuario o contraseña incorrectos');
     }
@@ -467,14 +513,14 @@ export default function App() {
 
       {/* Navegación Responsive */}
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
-        <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => setVista('dashboard')}>Atelier</h1>
+        <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => cambiarVista('dashboard')}>Atelier</h1>
         <div className="flex gap-4 md:gap-8 text-sm text-stone-400 font-medium overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-          <button onClick={() => setVista('dashboard')} className={`whitespace-nowrap ${vista === 'dashboard' ? 'text-white' : ''}`}>Dashboard</button>
-          <button onClick={() => setVista('clientes')} className={`whitespace-nowrap ${vista === 'clientes' ? 'text-white' : ''}`}>Clientes</button>
-          <button onClick={() => setVista('catalogo')} className={`whitespace-nowrap ${vista === 'catalogo' ? 'text-white' : ''}`}>Catálogo Telas</button>
-          <button onClick={() => setVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
-          <button onClick={() => setVista('calculadora')} className={`whitespace-nowrap ${vista === 'calculadora' ? 'text-white' : ''}`}>Calculadora</button>
-          <button onClick={() => setVista('ganancias')} className={`whitespace-nowrap ${vista === 'ganancias' ? 'text-white' : ''}`}>Ganancias</button>
+          <button onClick={() => cambiarVista('dashboard')} className={`whitespace-nowrap ${vista === 'dashboard' ? 'text-white' : ''}`}>Dashboard</button>
+          <button onClick={() => cambiarVista('clientes')} className={`whitespace-nowrap ${vista === 'clientes' ? 'text-white' : ''}`}>Clientes</button>
+          <button onClick={() => cambiarVista('catalogo')} className={`whitespace-nowrap ${vista === 'catalogo' ? 'text-white' : ''}`}>Catálogo Telas</button>
+          <button onClick={() => cambiarVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
+          <button onClick={() => cambiarVista('calculadora')} className={`whitespace-nowrap ${vista === 'calculadora' ? 'text-white' : ''}`}>Calculadora</button>
+          <button onClick={() => cambiarVista('ganancias')} className={`whitespace-nowrap ${vista === 'ganancias' ? 'text-white' : ''}`}>Ganancias</button>
           <button onClick={() => setUser(null)} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Salir</button>
         </div>
       </nav>
@@ -520,7 +566,7 @@ export default function App() {
                   return (
                     <div 
                       key={p.id} 
-                      onClick={() => { setPedidoSeleccionado(p); setVista('detalle-pedido'); }} 
+                      onClick={() => { setPedidoSeleccionado(p); cambiarVista('detalle-pedido'); }} 
                       className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
                     >
                       <button 
@@ -571,7 +617,7 @@ export default function App() {
           const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
           return (
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
-              <button onClick={() => setVista('dashboard')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+              <button onClick={() => cambiarVista('dashboard')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
               
               <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
               <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
@@ -592,7 +638,7 @@ export default function App() {
                     await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
                     setPedidoSeleccionado(actualizado);
                     
-                    setVista('dashboard');
+                    cambiarVista('dashboard');
                     
                   } catch (err) {
                     alert("Error al actualizar pedido: " + err.message);
@@ -797,9 +843,9 @@ export default function App() {
                       >
                         ✕
                       </button>
-                      <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); setVista('detalle-tela'); }} />
+                      <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }} />
                       <div className="p-4">
-                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); setVista('detalle-tela'); }}>{t.nombre}</h3>
+                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }}>{t.nombre}</h3>
                         <p className="text-xs text-stone-400">{t.descripcion} - {t.uso}</p>
                         {t.precio > 0 && <p className="text-xs text-emerald-400 font-semibold mt-1">${t.precio.toLocaleString()} / m</p>}
                         <div className="flex items-center gap-2 mt-2">
@@ -834,9 +880,9 @@ export default function App() {
                       >
                         ✕
                       </button>
-                      <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); setVista('detalle-avio'); }} />
+                      <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />
                       <div className="p-4">
-                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); setVista('detalle-avio'); }}>{a.nombre}</h3>
+                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }}>{a.nombre}</h3>
                         <p className="text-xs text-stone-400">{a.descripcion} - {a.uso}</p>
                         <div className="flex items-center gap-2 mt-2">
                             <span className="text-xs text-stone-400">Stock:</span>
@@ -856,26 +902,26 @@ export default function App() {
 
         {vista === 'detalle-tela' && telaSeleccionada && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
-            <button onClick={() => setVista('catalogo')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+            <button onClick={() => cambiarVista('catalogo')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
             <img src={telaSeleccionada.foto} alt={telaSeleccionada.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
             <h2 className="text-2xl font-bold mb-2">{telaSeleccionada.nombre}</h2>
             <p className="text-stone-400 text-sm mb-2"><strong>Descripción:</strong> {telaSeleccionada.descripcion}</p>
             <p className="text-stone-400 text-sm mb-2"><strong>Uso:</strong> {telaSeleccionada.uso}</p>
             <p className="text-stone-400 text-sm mb-2"><strong>Stock:</strong> {telaSeleccionada.stock}</p>
             <p className="text-stone-400 text-sm mb-6"><strong>Precio por metro:</strong> {telaSeleccionada.precio ? `$${telaSeleccionada.precio.toLocaleString()}` : 'No especificado'}</p>
-            <button onClick={() => setVista('editar-tela')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Tela</button>
+            <button onClick={() => cambiarVista('editar-tela')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Tela</button>
           </div>
         )}
 
         {vista === 'detalle-avio' && avioSeleccionado && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
-            <button onClick={() => setVista('catalogo-avios')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+            <button onClick={() => cambiarVista('catalogo-avios')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
             <img src={avioSeleccionado.foto} alt={avioSeleccionado.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
             <h2 className="text-2xl font-bold mb-2">{avioSeleccionado.nombre}</h2>
             <p className="text-stone-400 text-sm mb-2"><strong>Descripción:</strong> {avioSeleccionado.descripcion}</p>
             <p className="text-stone-400 text-sm mb-2"><strong>Uso:</strong> {avioSeleccionado.uso}</p>
             <p className="text-stone-400 text-sm mb-6"><strong>Stock:</strong> {avioSeleccionado.stock}</p>
-            <button onClick={() => setVista('editar-avio')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Avío</button>
+            <button onClick={() => cambiarVista('editar-avio')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Avío</button>
           </div>
         )}
 
@@ -897,7 +943,7 @@ export default function App() {
                       >
                         ✕
                       </button>
-                      <h3 className="text-lg font-semibold cursor-pointer hover:underline" onClick={() => { setClienteSeleccionado(c); setVista('detalle-cliente'); }}>{c.nombre}</h3>
+                      <h3 className="text-lg font-semibold cursor-pointer hover:underline" onClick={() => { setClienteSeleccionado(c); cambiarVista('detalle-cliente'); }}>{c.nombre}</h3>
                       <p className="text-stone-400 text-xs mb-4">{c.telefono}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-stone-500">
                         {Object.entries(c.medidas || {}).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
@@ -913,12 +959,12 @@ export default function App() {
           <>
             {/* Vista normal dentro de la app */}
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
-              <button onClick={() => setVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+              <button onClick={() => cambiarVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
               <h2 className="text-3xl font-bold mb-1">{clienteSeleccionado.nombre}</h2>
               <p className="text-stone-400 text-sm mb-6">{clienteSeleccionado.telefono}</p>
               
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <button onClick={() => setVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
+                <button onClick={() => cambiarVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
                 <button onClick={() => window.print()} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Imprimir Ficha</button>
                 <button 
                   onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este cliente?", action: () => borrarCliente(clienteSeleccionado.id) })} 
@@ -1118,7 +1164,7 @@ export default function App() {
                       {datos.pedidos.map(p => (
                         <div 
                           key={p.id}
-                          onClick={() => { setPedidoSeleccionado(p); setVista('detalle-pedido'); }}
+                          onClick={() => { setPedidoSeleccionado(p); cambiarVista('detalle-pedido'); }}
                           className="bg-stone-900/60 border border-stone-800/80 p-4 rounded-xl cursor-pointer hover:border-stone-600 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2"
                         >
                           <div>
@@ -1148,10 +1194,10 @@ export default function App() {
       {/* --- MENU FLOTANTE --- */}
       {menuAbierto && (
         <div className="fixed bottom-24 right-4 md:right-8 z-50 flex flex-col gap-3">
-          <button onClick={() => {setVista('nuevo-cliente'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Cliente</button>
-          <button onClick={() => {setVista('nuevo-pedido'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Pedido</button>
-          <button onClick={() => {setVista('nueva-tela'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nueva Tela</button>
-          <button onClick={() => {setVista('nuevo-avio'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Avío</button>
+          <button onClick={() => {cambiarVista('nuevo-cliente'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Cliente</button>
+          <button onClick={() => {cambiarVista('nuevo-pedido'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Pedido</button>
+          <button onClick={() => {cambiarVista('nueva-tela'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nueva Tela</button>
+          <button onClick={() => {cambiarVista('nuevo-avio'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Avío</button>
         </div>
       )}
 
