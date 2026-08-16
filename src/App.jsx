@@ -418,6 +418,7 @@ export default function App() {
     }
   };
 
+  // Pedidos filtrados para el Dashboard (Aplica estado y búsqueda)
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
@@ -428,6 +429,13 @@ export default function App() {
       p.id.toLowerCase().includes(textoBusqueda);
     return coincideFiltro && coincideBusqueda;
   }).sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
+    return timeB - timeA;
+  });
+
+  // Pedidos disponibles para la Calculadora (Sin filtros de estado/búsqueda, solo ignora los ocultos)
+  const pedidosParaCalculadora = pedidos.filter(p => !p.ocultoDashboard).sort((a, b) => {
     const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
     const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
     return timeB - timeA;
@@ -1096,7 +1104,7 @@ export default function App() {
               <form onSubmit={asignarPrecioAPedido} className="border-t border-stone-800 pt-6">
                 <label className="block text-sm text-stone-400 mb-2">Asignar a pedido:</label>
                 <select name="pedidoId" className="w-full bg-stone-950/50 p-3 rounded-xl border border-stone-800 mb-4 text-white outline-none">
-                  {pedidosVisibles.map(p => <option key={p.id} value={p.id}>{p.cliente} - {p.prenda}</option>)}
+                  {pedidosParaCalculadora.map(p => <option key={p.id} value={p.id}>{p.cliente} - {p.prenda}</option>)}
                 </select>
                 <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Asignar Precio</button>
               </form>
