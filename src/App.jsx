@@ -462,7 +462,8 @@ export default function App() {
 
   if (!user) {
     return (
-        <div className="min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
+        /* Agregado translate="no" y className="notranslate" para bloquear el traductor */
+        <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
             <div className="bg-stone-900/40 p-6 md:p-8 rounded-3xl w-full max-w-sm border border-stone-800 backdrop-blur-xl">
                 <h1 className="text-3xl font-bold mb-8 text-center tracking-tighter">Atelier</h1>
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -492,7 +493,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
+    /* Agregado translate="no" y className="notranslate" para bloquear el traductor en toda la App */
+    <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
       <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center" />
 
       {/* Estilo CSS exclusivo para que al imprimir se vea un PDF/Impresión limpio, sin gastar tinta negra y ordenado */}
