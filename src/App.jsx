@@ -408,9 +408,9 @@ export default function App() {
     }
   };
 
-  const handleLogin = (e) => {
+const handleLogin = (e) => {
     e.preventDefault();
-    if (loginUser.trim() === 'Kamurina' && loginPass === 'glj-2007') {
+    if (loginUser.trim() === import.meta.env.VITE_APP_USER && loginPass === import.meta.env.VITE_APP_PASS) {
         setUser({ uid: 'Kamurina' });
         window.history.replaceState({ vista: 'dashboard' }, '');
     } else {
