@@ -394,8 +394,8 @@ export default function App() {
       const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
 
       const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
-      const telefonoCliente = esAdmin ? '' : (fd.get('telefono') || '');
-      const descripcionDetalle = esAdmin ? '' : (fd.get('descripcionDetalle') || '');
+      const telefonoCliente = esAdmin ? (fd.get('telefonoAdmin') || '') : (fd.get('telefono') || '');
+      const descripcionDetalle = esAdmin ? (fd.get('descripcionDetalleAdmin') || '') : (fd.get('descripcionDetalle') || '');
 
       const estadoInicial = esAdmin ? 'Eligiendo telas' : 'Pendiente de Aprobación';
 
@@ -422,26 +422,26 @@ export default function App() {
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
 
-      if (!esAdmin) {
-        const nombreBuscado = nombreCliente.toLowerCase();
-        const telefonoBuscado = telefonoCliente.trim();
+      const nombreBuscado = nombreCliente.toLowerCase();
+      const telefonoBuscado = telefonoCliente.trim();
 
-        const clienteEncontrado = clientes.find(c => {
-          const coincideNombre = c.nombre && c.nombre.toLowerCase() === nombreBuscado;
-          const coincideTelefono = telefonoBuscado && c.telefono && c.telefono.trim() === telefonoBuscado;
-          return coincideNombre || coincideTelefono;
-        });
+      const clienteEncontrado = clientes.find(c => {
+        const coincideNombre = c.nombre && c.nombre.toLowerCase() === nombreBuscado;
+        const coincideTelefono = telefonoBuscado && c.telefono && c.telefono.trim() === telefonoBuscado;
+        return coincideNombre || coincideTelefono;
+      });
 
-        if (!clienteEncontrado) {
-          const nuevoClienteId = Date.now();
-          const fichaCliente = {
-            id: nuevoClienteId,
-            nombre: nombreCliente,
-            telefono: telefonoCliente,
-            medidas: {}
-          };
-          await setDoc(doc(db, "clientes", String(nuevoClienteId)), fichaCliente);
-        }
+      if (!clienteEncontrado) {
+        const nuevoClienteId = Date.now();
+        const fichaCliente = {
+          id: nuevoClienteId,
+          nombre: nombreCliente,
+          telefono: telefonoCliente,
+          medidas: {}
+        };
+        await setDoc(doc(db, "clientes", String(nuevoClienteId)), fichaCliente);
+      } else if (telefonoBuscado && !clienteEncontrado.telefono) {
+        await setDoc(doc(db, "clientes", String(clienteEncontrado.id)), { ...clienteEncontrado, telefono: telefonoBuscado }, { merge: true });
       }
 
       cambiarVista('dashboard');
@@ -568,6 +568,22 @@ export default function App() {
     } catch (err) {
       console.error("Error al salir:", err);
     }
+  };
+
+  const abrirWhatsApp = (pedido, e) => {
+    if (e) e.stopPropagation();
+    let tel = pedido.telefono;
+    if (!tel && esAdmin) {
+      const clienteObj = clientes.find(c => c.nombre.toLowerCase() === pedido.cliente.toLowerCase());
+      if (clienteObj) tel = clienteObj.telefono;
+    }
+    if (!tel) {
+      alert("No hay un número de teléfono registrado para este cliente.");
+      return;
+    }
+    const numeroLimpio = tel.replace(/\D/g, '');
+    const mensaje = encodeURIComponent(`Hola ${pedido.cliente}, te escribo desde el Atelier respecto a tu pedido de ${pedido.prenda} (${pedido.id}). ¿Cómo estás? Te consulto para coordinar detalles / solicitar fotos de ejemplo / fechas.`);
+    window.open(`https://wa.me/${numeroLimpio}?text=${mensaje}`, '_blank');
   };
 
   const pedidosVisibles = pedidos.filter(p => {
@@ -822,7 +838,7 @@ export default function App() {
                         ✕
                       </button>
                       
-                      <div className="flex justify-between items-start mb-4">
+                      <div className="flex justify-between items-start mb-4 pr-6">
                         <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
                         <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
                           {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente')}
@@ -848,22 +864,34 @@ export default function App() {
                         )}
                       </div>
 
-                      {esAdmin ? (
-                        <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => {
-                          if (e.target.value === 'Rechazado') {
-                            setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
-                          } else {
-                            actualizarEstado(p.id, e.target.value);
-                          }
-                        }} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
-                          {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                          <option value="Rechazado">Rechazado</option>
-                        </select>
-                      ) : (
-                        <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
-                          Estado del proceso
-                        </div>
-                      )}
+                      <div className="flex flex-col gap-2 mt-2">
+                        {esAdmin ? (
+                          <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => {
+                            if (e.target.value === 'Rechazado') {
+                              setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
+                            } else {
+                              actualizarEstado(p.id, e.target.value);
+                            }
+                          }} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
+                            {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                            <option value="Rechazado">Rechazado</option>
+                          </select>
+                        ) : (
+                          <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
+                            Estado del proceso
+                          </div>
+                        )}
+
+                        <button 
+                          onClick={(e) => abrirWhatsApp(p, e)}
+                          className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-800/40 hover:bg-emerald-600/30 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                          </svg>
+                          Comunicar por WhatsApp
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -902,20 +930,31 @@ export default function App() {
                       {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-4 border border-stone-800" />}
                     </div>
 
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-stone-800">
+                    <div className="space-y-2 mt-4 pt-4 border-t border-stone-800">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
+                          }}
+                          className="flex-1 bg-red-950/40 text-red-400 border border-red-900/50 py-2.5 rounded-xl text-xs font-bold hover:bg-red-900/40 transition-colors"
+                        >
+                          Rechazar
+                        </button>
+                        <button 
+                          onClick={() => aceptarSolicitud(p.id)}
+                          className="flex-1 bg-white text-stone-950 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors"
+                        >
+                          Aceptar
+                        </button>
+                      </div>
                       <button 
-                        onClick={() => {
-                          setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
-                        }}
-                        className="flex-1 bg-red-950/40 text-red-400 border border-red-900/50 py-2.5 rounded-xl text-xs font-bold hover:bg-red-900/40 transition-colors"
+                        onClick={(e) => abrirWhatsApp(p, e)}
+                        className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-800/40 hover:bg-emerald-600/30 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                       >
-                        Rechazar
-                      </button>
-                      <button 
-                        onClick={() => aceptarSolicitud(p.id)}
-                        className="flex-1 bg-white text-stone-950 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors"
-                      >
-                        Aceptar
+                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                        </svg>
+                        Comunicar por WhatsApp
                       </button>
                     </div>
                   </div>
@@ -996,7 +1035,7 @@ export default function App() {
                             </select>
                         </div>
                     </div>
-                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-8 hover:bg-stone-700">Guardar Información</button>
+                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-4 hover:bg-stone-700">Guardar Información</button>
                 </form>
               ) : (
                 <div className="space-y-4 mb-8 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
@@ -1009,6 +1048,16 @@ export default function App() {
                   <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
                 </div>
               )}
+
+              <button 
+                onClick={(e) => abrirWhatsApp(pedidoSeleccionado, e)}
+                className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-800/40 hover:bg-emerald-600/30 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 mb-6 transition-colors"
+              >
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+                Comunicar por WhatsApp
+              </button>
 
               <h3 className="text-lg font-semibold mb-4">Fotos del Trabajo</h3>
               {arrayFotos.length === 0 ? (
@@ -1054,10 +1103,13 @@ export default function App() {
              <h2 className="text-2xl font-bold mb-6">Solicitar Nuevo Pedido</h2>
              
              {esAdmin ? (
-               <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
-                 <option value="">Seleccionar Cliente</option>
-                 {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
-               </select>
+               <>
+                 <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
+                   <option value="">Seleccionar Cliente</option>
+                   {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                 </select>
+                 <input name="telefonoAdmin" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               </>
              ) : (
                <div className="mb-4 bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-stone-400">
                  Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
@@ -1073,7 +1125,7 @@ export default function App() {
              <div>
                <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
                <textarea 
-                 name="descripcionDetalle" 
+                 name={esAdmin ? "descripcionDetalleAdmin" : "descripcionDetalle"} 
                  rows="3" 
                  placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
                  className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
