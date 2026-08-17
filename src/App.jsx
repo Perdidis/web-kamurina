@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc, query, where, getDocs } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
@@ -395,6 +395,7 @@ export default function App() {
 
       const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
       const telefonoCliente = esAdmin ? '' : (fd.get('telefono') || '');
+      const descripcionDetalle = esAdmin ? '' : (fd.get('descripcionDetalle') || '');
 
       const estadoInicial = esAdmin ? 'Eligiendo telas' : 'Pendiente de Aprobación';
 
@@ -405,7 +406,8 @@ export default function App() {
           telefono: telefonoCliente,
           prenda: fd.get('prenda'), 
           estado: estadoInicial, 
-          entrega: fd.get('fecha') || '', 
+          entrega: '', 
+          descripcionDetalle: descripcionDetalle,
           precio: 0, 
           pagado: false, 
           tela: fd.get('tela') || '',
@@ -531,17 +533,6 @@ export default function App() {
       setModalRechazo({ isOpen: false, pedidoId: null, motivo: '' });
     } catch (err) {
       alert("Error al rechazar pedido: " + err.message);
-    }
-  };
-
-  const togglePago = async (id) => {
-    try {
-      const pedido = pedidos.find(p => p.id === id);
-      if (pedido) {
-        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, pagado: !pedido.pagado }, { merge: true });
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -870,7 +861,7 @@ export default function App() {
                         </select>
                       ) : (
                         <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
-                          Posible encuentro: {p.entrega || 'A definir'}
+                          Estado del proceso
                         </div>
                       )}
                     </div>
@@ -899,8 +890,14 @@ export default function App() {
                       </div>
 
                       <h3 className="text-lg font-semibold">{p.cliente}</h3>
-                      <p className="text-stone-300 text-sm mb-3">Prenda: <strong>{p.prenda}</strong></p>
-                      <p className="text-stone-400 text-xs mb-3">Fecha sugerida de encuentro: {p.entrega || 'No especificada'}</p>
+                      <p className="text-stone-300 text-sm mb-2">Prenda: <strong>{p.prenda}</strong></p>
+                      
+                      {p.descripcionDetalle && (
+                        <div className="bg-stone-950/60 border border-stone-800 p-3 rounded-xl mb-3 text-xs text-stone-300">
+                          <strong className="text-stone-400 block mb-1">Detalles (Color, forma, tela):</strong>
+                          {p.descripcionDetalle}
+                        </div>
+                      )}
 
                       {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-4 border border-stone-800" />}
                     </div>
@@ -953,7 +950,6 @@ export default function App() {
                       const actualizado = {
                           ...pedidoSeleccionado,
                           prenda: fd.get('prenda'),
-                          entrega: fd.get('entrega'),
                           tela: fd.get('tela'),
                           precio: Number(fd.get('precio')),
                           gastos: Number(fd.get('gastos')) || 0,
@@ -972,10 +968,6 @@ export default function App() {
                         <div>
                             <label className="text-stone-500 pl-1 text-xs">Prenda</label>
                             <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Posible encuentro / toma de medidas</label>
-                            <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
                         </div>
                         <div>
                             <label className="text-stone-500 pl-1 text-xs">Tela</label>
@@ -1009,8 +1001,10 @@ export default function App() {
               ) : (
                 <div className="space-y-4 mb-8 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
                   <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
+                  {pedidoSeleccionado.descripcionDetalle && (
+                    <p><strong>Detalles (Color, forma, tela):</strong> {pedidoSeleccionado.descripcionDetalle}</p>
+                  )}
                   <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
-                  <p><strong>Posible encuentro / toma de medidas:</strong> {pedidoSeleccionado.entrega || 'A definir'}</p>
                   <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
                   <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
                 </div>
@@ -1077,8 +1071,14 @@ export default function App() {
              )}
 
              <div>
-               <label className="block text-xs text-stone-400 mb-1">Posible encuentro / toma de medidas</label>
-               <input name="fecha" type="date" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
+               <textarea 
+                 name="descripcionDetalle" 
+                 rows="3" 
+                 placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
+                 className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
+                 required 
+               />
              </div>
              
              {esAdmin && (
@@ -1368,6 +1368,10 @@ export default function App() {
                         <span className="text-xs font-bold">{p.prenda} (<span className={esRechazado ? "text-red-400" : ""}>{p.estado}</span>)</span>
                         <span className="text-xs text-stone-400">{p.entrega}</span>
                       </div>
+
+                      {p.descripcionDetalle && (
+                        <p className="text-xs text-stone-300 bg-stone-900/60 p-2.5 rounded-xl border border-stone-800"><strong>Detalles:</strong> {p.descripcionDetalle}</p>
+                      )}
 
                       {esRechazado && p.motivoRechazo && (
                         <p className="text-xs text-red-300 bg-red-950/40 p-2 rounded-xl"><strong>Motivo rechazo:</strong> {p.motivoRechazo}</p>
