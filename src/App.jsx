@@ -420,12 +420,10 @@ export default function App() {
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
 
-      // Verificación ampliada de existencia de cliente en base de datos de admin
       if (!esAdmin) {
         const nombreBuscado = nombreCliente.toLowerCase();
         const telefonoBuscado = telefonoCliente.trim();
 
-        // Buscar coincidencias exactas por nombre o por número de teléfono
         const clienteEncontrado = clientes.find(c => {
           const coincideNombre = c.nombre && c.nombre.toLowerCase() === nombreBuscado;
           const coincideTelefono = telefonoBuscado && c.telefono && c.telefono.trim() === telefonoBuscado;
@@ -750,10 +748,11 @@ export default function App() {
           
           {esAdmin && (
             <>
-              <button onClick={() => cambiarVista('solicitudes')} className={`whitespace-nowrap relative ${vista === 'solicitudes' ? 'text-white' : ''}`}>
-                Solicitudes
+              {/* Contenedor adaptado para evitar superposición en móviles */}
+              <button onClick={() => cambiarVista('solicitudes')} className={`whitespace-nowrap relative inline-flex items-center ${vista === 'solicitudes' ? 'text-white' : ''}`}>
+                <span>Solicitudes</span>
                 {solicitudesPendientesAdmin.length > 0 && (
-                  <span className="absolute -top-2 -right-4 bg-amber-500 text-stone-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                  <span className="ml-2 bg-amber-500 text-stone-950 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none inline-block">
                     {solicitudesPendientesAdmin.length}
                   </span>
                 )}
