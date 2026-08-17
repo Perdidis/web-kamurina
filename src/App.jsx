@@ -959,7 +959,7 @@ export default function App() {
         <div className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-stone-900 border border-stone-700 px-6 py-4 rounded-2xl text-white text-sm font-bold flex items-center gap-3">
             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            Subiendo archivos a Cloudinary y guardando...
+            Guardando...
           </div>
         </div>
       )}
@@ -1126,112 +1126,112 @@ export default function App() {
                               action: () => borrarPedidoDefinitivo(p.id) 
                             });
                           }
-                        }} 
-                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                      >
-                        ✕
-                      </button>
-                      
-                      <div className="flex justify-between items-start mb-4">
-                        <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
-                        <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
-                          {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente de Pago')}
-                        </span>
-                      </div>
+                      }} 
+                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                    >
+                      ✕
+                    </button>
+                    
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
+                      <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
+                        {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente de Pago')}
+                      </span>
+                    </div>
 
-                      <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
-                      {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
+                    <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
+                    {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
 
-                      {esAdmin ? (
-                        <div onClick={(e) => e.stopPropagation()} className="mb-2">
-                          <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
-                            <span className="text-stone-300">Estado:</span>
-                            <select
-                              value={p.estado}
-                              onChange={(e) => actualizarEstado(p.id, e.target.value)}
-                              className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
-                            >
-                              <option value="Eligiendo telas">Eligiendo telas</option>
-                              <option value="En confección / Pruebas">En confección / Pruebas</option>
-                              <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
-                              <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
-                              <option value="Entregado con éxito">Entregado con éxito</option>
-                            </select>
-                          </div>
+                    {esAdmin ? (
+                      <div onClick={(e) => e.stopPropagation()} className="mb-2">
+                        <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
+                          <span className="text-stone-300">Estado:</span>
+                          <select
+                            value={p.estado}
+                            onChange={(e) => actualizarEstado(p.id, e.target.value)}
+                            className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
+                          >
+                            <option value="Eligiendo telas">Eligiendo telas</option>
+                            <option value="En confección / Pruebas">En confección / Pruebas</option>
+                            <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
+                            <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
+                            <option value="Entregado con éxito">Entregado con éxito</option>
+                          </select>
                         </div>
-                      ) : (
-                        <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
-                      )}
-
-                      {esRechazado && p.motivoRechazo && (
-                        <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
-                          <strong>Motivo de rechazo:</strong> {p.motivoRechazo}
-                        </div>
-                      )}
-
-                      {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
-                      
-                      <div className="mb-4">
-                        <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Presupuesto a confirmar'}</p>
-                        {esAdmin && p.precio > 0 && (
-                          <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
-                        )}
                       </div>
+                    ) : (
+                      <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
+                    )}
 
+                    {esRechazado && p.motivoRechazo && (
+                      <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
+                        <strong>Motivo de rechazo:</strong> {p.motivoRechazo}
+                      </div>
+                    )}
+
+                    {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
+                    
+                    <div className="mb-4">
+                      <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Presupuesto a confirmar'}</p>
                       {esAdmin && p.precio > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setModalPago({ isOpen: true, pedidoId: p.id });
-                          }}
-                          className="mb-3 w-full bg-stone-800 hover:bg-stone-700 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-stone-700"
-                        >
-                          💳 Registrar Pago
-                        </button>
+                        <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
                       )}
+                    </div>
 
-                      {!esAdmin && p.precio > 0 && !p.pagado && (
-                        <button
-                          onClick={(e) => {
+                    {esAdmin && p.precio > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalPago({ isOpen: true, pedidoId: p.id });
+                        }}
+                        className="mb-3 w-full bg-stone-800 hover:bg-stone-700 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-stone-700"
+                      >
+                        💳 Registrar Pago
+                      </button>
+                    )}
+
+                    {!esAdmin && p.precio > 0 && !p.pagado && (
+                      <button
+                        onClick={(e) => {
                             e.stopPropagation();
                             setModalAlias({ isOpen: true, pedido: p });
-                          }}
-                          className="mb-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-lg"
+                        }}
+                        className="mb-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-lg"
+                      >
+                        💳 Pagar (Ver Alias)
+                      </button>
+                    )}
+
+                    {(() => {
+                      const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
+                      if (!telefonoContacto) return null;
+                      const mensaje = esAdmin 
+                        ? `Hola ${p.cliente}, te escribo desde Atelier por tu pedido de ${p.prenda} para coordinar detalles y fotos.` 
+                        : `Hola, le escribo por mi pedido de ${p.prenda} (${p.id}) en Atelier.`;
+                      const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+
+                      return (
+                        <a
+                          href={urlWhatsapp}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors"
                         >
-                          💳 Pagar (Ver Alias)
-                        </button>
-                      )}
-
-                      {(() => {
-                        const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
-                        if (!telefonoContacto) return null;
-                        const mensaje = esAdmin 
-                          ? `Hola ${p.cliente}, te escribo desde Atelier por tu pedido de ${p.prenda} para coordinar detalles y fotos.` 
-                          : `Hola, le escribo por mi pedido de ${p.prenda} (${p.id}) en Atelier.`;
-                        const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
-
-                        return (
-                          <a
-                            href={urlWhatsapp}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors"
-                          >
-                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                            </svg>
-                            {esAdmin ? 'Coordinar por WhatsApp' : 'Contactar por WhatsApp'}
-                          </a>
-                        );
-                      })()}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                          </svg>
+                          {esAdmin ? 'Coordinar por WhatsApp' : 'Contactar por WhatsApp'}
+                        </a>
+                      );
+                    })()}
+                </div>
+                );
+              })
+            )}
+        </div>
+      </div>
+    )}
 
         {esAdmin && vista === 'solicitudes' && (
           <div>
@@ -1250,459 +1250,460 @@ export default function App() {
                         </span>
                       </div>
 
-                      <h3 className="text-lg font-semibold">{p.cliente}</h3>
-                      <p className="text-stone-300 text-sm mb-2">Prenda: <strong>{p.prenda}</strong></p>
-                      
-                      {p.descripcionDetalle && (
-                        <div className="bg-stone-950/60 border border-stone-800 p-3 rounded-xl mb-3 text-xs text-stone-300">
-                          <strong className="text-stone-400 block mb-1">Detalles (Color, forma, tela):</strong>
-                          {p.descripcionDetalle}
-                        </div>
-                      )}
-
-                      {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-4 border border-stone-800" />}
-                    </div>
-
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-stone-800">
-                      <button 
-                        onClick={() => {
-                          setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
-                        }}
-                        className="flex-1 bg-red-950/40 text-red-400 border border-red-900/50 py-2.5 rounded-xl text-xs font-bold hover:bg-red-900/40 transition-colors"
-                      >
-                        Rechazar
-                      </button>
-                      <button 
-                        onClick={() => aceptarSolicitud(p.id)}
-                        className="flex-1 bg-white text-stone-950 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors"
-                      >
-                        Aceptar
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {vista === 'detalle-pedido' && pedidoSeleccionado && (() => {
-          const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
-          const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
-          
-          const pagosRealizados = pedidoSeleccionado.pagos || [];
-          const totalAbonado = pagosRealizados.reduce((acc, curr) => acc + curr.monto, 0);
-          const precioTotal = pedidoSeleccionado.precio || 0;
-          const saldoPendiente = Math.max(0, precioTotal - totalAbonado);
-          const porcentajePagado = precioTotal > 0 ? Math.min(100, Math.round((totalAbonado / precioTotal) * 100)) : 0;
-
-          return (
-            <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-10 rounded-3xl max-w-3xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
-              <button onClick={() => cambiarVista('dashboard')} className="absolute top-6 right-6 text-stone-400 hover:text-white bg-stone-800/50 px-3 py-1.5 rounded-xl text-xs">Volver</button>
-              
-              <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
-              <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
-
-              {esRechazado && pedidoSeleccionado.motivoRechazo && (
-                <div className="bg-red-950/40 border border-red-900/60 p-4 rounded-2xl mb-6 text-sm text-red-300">
-                  <strong>Solicitud Rechazada.</strong> Motivo: {pedidoSeleccionado.motivoRechazo}
-                </div>
-              )}
-              
-              {esAdmin ? (
-                <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    const fd = new FormData(e.target);
-                    const precioNuevo = Number(fd.get('precio'));
-                    if (precioNuevo < 0) {
-                      mostrarToast("⚠️ El precio no puede ser negativo");
-                      return;
-                    }
-                    try {
-                      const nuevoEstado = fd.get('estado');
-                      const nuevaEntrega = fd.get('entrega');
-                      const actualizado = {
-                          ...pedidoSeleccionado,
-                          prenda: fd.get('prenda'),
-                          tela: fd.get('tela'),
-                          precio: precioNuevo,
-                          gastos: Number(fd.get('gastos')) || 0,
-                          estado: nuevoEstado,
-                          entrega: nuevaEntrega,
-                          motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : '',
-                          ocultoDashboard: nuevoEstado === 'Rechazado' ? true : pedidoSeleccionado.ocultoDashboard
-                      };
-                      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
-                      setPedidoSeleccionado(actualizado);
-                      mostrarToast("Pedido actualizado con éxito");
-                      cambiarVista('dashboard');
-                    } catch (err) {
-                      mostrarToast("Error al actualizar pedido");
-                    }
-                }}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Prenda</label>
-                            <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Tela</label>
-                            <select name="tela" defaultValue={pedidoSeleccionado.tela} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
-                                <option value="">Ninguna</option>
-                                {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Precio Total ($)</label>
-                            <input name="precio" type="number" min="0" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
-                            <input name="gastos" type="number" min="0" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega (Ganancias)</label>
-                            <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega || ''} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none text-white" />
-                        </div>
-                        <div className="col-span-1 sm:col-span-2">
-                            <label className="text-stone-500 pl-1 text-xs">Estado Logístico / Confección</label>
-                            <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none font-bold text-white" required>
-                                <option value="Eligiendo telas">Eligiendo telas</option>
-                                <option value="En confección / Pruebas">En confección / Pruebas</option>
-                                <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
-                                <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
-                                <option value="Entregado con éxito">Entregado con éxito</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-6 hover:bg-stone-700">Guardar Información</button>
-                </form>
-              ) : (
-                <div className="space-y-4 mb-6 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
-                  <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
-                  {pedidoSeleccionado.descripcionDetalle && (
-                    <p><strong>Detalles (Color, forma, tela):</strong> {pedidoSeleccionado.descripcionDetalle}</p>
-                  )}
-                  <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
-                  <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
-                  
-                  {!esAdmin && pedidoSeleccionado.precio > 0 && !pedidoSeleccionado.pagado && (
-                    <button
-                      onClick={() => setModalAlias({ isOpen: true, pedido: pedidoSeleccionado })}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors shadow-lg mt-4"
-                    >
-                      💳 Pagar por Transferencia (Ver Alias)
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="bg-stone-950/80 border border-stone-800 p-6 rounded-2xl mb-6 shadow-inner">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                  <h3 className="text-base font-bold text-white">Control de Pagos y Adelantos</h3>
-                  <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${pedidoSeleccionado.pagado ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-amber-950 text-amber-300 border border-amber-900/50'}`}>
-                    {pedidoSeleccionado.pagado ? 'Pagado Total' : `Saldo Pendiente: $${saldoPendiente.toLocaleString()}`}
-                  </span>
-                </div>
-
-                <div className="w-full bg-stone-900 h-3 rounded-full overflow-hidden mb-4 border border-stone-800">
-                  <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${porcentajePagado}%` }}></div>
-                </div>
-
-                <div className="flex justify-between text-xs text-stone-400 mb-5">
-                  <span>Abonado: <strong className="text-white">${totalAbonado.toLocaleString()}</strong></span>
-                  <span>Total prenda: <strong className="text-white">${precioTotal.toLocaleString()}</strong> ({porcentajePagado}%)</span>
-                </div>
-
-                {pagosRealizados.length > 0 && (
-                  <div className="space-y-2.5 mb-5">
-                    <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold">Historial de entregas de dinero:</p>
-                    {pagosRealizados.map((pago) => (
-                      <div key={pago.id} className="flex justify-between items-center bg-stone-900/90 p-3 rounded-xl border border-stone-800 text-xs">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-emerald-400 text-sm">${pago.monto.toLocaleString()}</span>
-                          <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-[11px]">{pago.metodo}</span>
-                          <span className="text-stone-500 text-[11px]">{pago.fecha}</span>
-                        </div>
-                        {esAdmin && (
-                          <button 
-                            onClick={() => eliminarPagoParcial(pago.id)}
-                            className="text-stone-400 hover:text-red-400 p-1 font-bold text-sm"
-                            title="Eliminar pago"
-                          >
-                            ✕
-                          </button>
-                        )}
+                    <h3 className="text-lg font-semibold">{p.cliente}</h3>
+                    <p className="text-stone-300 text-sm mb-2">Prenda: <strong>{p.prenda}</strong></p>
+                     
+                    {p.descripcionDetalle && (
+                      <div className="bg-stone-950/60 border border-stone-800 p-3 rounded-xl mb-3 text-xs text-stone-300">
+                        <strong className="text-stone-400 block mb-1">Detalles (Color, forma, tela):</strong>
+                        {p.descripcionDetalle}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {esAdmin && pedidoSeleccionado.precio > 0 && (
+                    {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-4 border border-stone-800" />}
+                  </div>
+
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-stone-800">
+                    <button 
+                      onClick={() => {
+                        setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
+                      }}
+                      className="flex-1 bg-red-950/40 text-red-400 border border-red-900/50 py-2.5 rounded-xl text-xs font-bold hover:bg-red-900/40 transition-colors"
+                    >
+                      Rechazar
+                    </button>
+                    <button 
+                      onClick={() => aceptarSolicitud(p.id)}
+                      className="flex-1 bg-white text-stone-950 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors"
+                    >
+                      Aceptar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {vista === 'detalle-pedido' && pedidoSeleccionado && (() => {
+        const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
+        const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
+         
+        const pagosRealizados = pedidoSeleccionado.pagos || [];
+        const totalAbonado = pagosRealizados.reduce((acc, curr) => acc + curr.monto, 0);
+        const precioTotal = pedidoSeleccionado.precio || 0;
+        const saldoPendiente = Math.max(0, precioTotal - totalAbonado);
+        const porcentajePagado = precioTotal > 0 ? Math.min(100, Math.round((totalAbonado / precioTotal) * 100)) : 0;
+
+        return (
+          <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-10 rounded-3xl max-w-3xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
+            <button onClick={() => cambiarVista('dashboard')} className="absolute top-6 right-6 text-stone-400 hover:text-white bg-stone-800/50 px-3 py-1.5 rounded-xl text-xs">Volver</button>
+             
+            <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
+            <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
+
+            {esRechazado && pedidoSeleccionado.motivoRechazo && (
+              <div className="bg-red-950/40 border border-red-900/60 p-4 rounded-2xl mb-6 text-sm text-red-300">
+                <strong>Solicitud Rechazada.</strong> Motivo: {pedidoSeleccionado.motivoRechazo}
+              </div>
+            )}
+             
+            {esAdmin ? (
+              <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.target);
+                  const precioNuevo = Number(fd.get('precio'));
+                  if (precioNuevo < 0) {
+                    mostrarToast("⚠️ El precio no puede ser negativo");
+                    return;
+                  }
+                  try {
+                    const nuevoEstado = fd.get('estado');
+                    const nuevaEntrega = fd.get('entrega');
+                    const actualizado = {
+                        ...pedidoSeleccionado,
+                        prenda: fd.get('prenda'),
+                        tela: fd.get('tela'),
+                        precio: precioNuevo,
+                        gastos: Number(fd.get('gastos')) || 0,
+                        estado: nuevoEstado,
+                        entrega: nuevaEntrega,
+                        motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : '',
+                        ocultoDashboard: nuevoEstado === 'Rechazado' ? true : pedidoSeleccionado.ocultoDashboard
+                    };
+                    await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+                    setPedidoSeleccionado(actualizado);
+                    mostrarToast("Pedido actualizado con éxito");
+                    cambiarVista('dashboard');
+                  } catch (err) {
+                    mostrarToast("Error al actualizar pedido");
+                  }
+              }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Prenda</label>
+                          <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
+                      </div>
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Tela</label>
+                          <select name="tela" defaultValue={pedidoSeleccionado.tela} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
+                              <option value="">Ninguna</option>
+                              {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                          </select>
+                      </div>
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Precio Total ($)</label>
+                          <input name="precio" type="number" min="0" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                      </div>
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
+                          <input name="gastos" type="number" min="0" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                      </div>
+                      <div>
+                          <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega (Ganancias)</label>
+                          <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega || ''} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none text-white" />
+                      </div>
+                      <div className="col-span-1 sm:col-span-2">
+                          <label className="text-stone-500 pl-1 text-xs">Estado Logístico / Confección</label>
+                          <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none font-bold text-white" required>
+                              <option value="Eligiendo telas">Eligiendo telas</option>
+                              <option value="En confección / Pruebas">En confección / Pruebas</option>
+                              <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
+                              <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
+                              <option value="Entregado con éxito">Entregado con éxito</option>
+                          </select>
+                      </div>
+                  </div>
+                  <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-6 hover:bg-stone-700">Guardar Información</button>
+              </form>
+            ) : (
+              <div className="space-y-4 mb-6 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
+                <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
+                {pedidoSeleccionado.descripcionDetalle && (
+                  <p><strong>Detalles (Color, forma, tela):</strong> {pedidoSeleccionado.descripcionDetalle}</p>
+                )}
+                <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
+                <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
+                 
+                {!esAdmin && pedidoSeleccionado.precio > 0 && !pedidoSeleccionado.pagado && (
                   <button
-                    onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
-                    className="w-full bg-white text-stone-950 py-3.5 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
+                    onClick={() => setModalAlias({ isOpen: true, pedido: pedidoSeleccionado })}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors shadow-lg mt-4"
                   >
-                    + Registrar Nuevo Pago / Seña
+                    💳 Pagar por Transferencia (Ver Alias)
                   </button>
                 )}
               </div>
+            )}
 
-              {(() => {
-                const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
-                if (!telefonoContacto) return null;
-                const mensaje = esAdmin 
-                  ? `Hola ${pedidoSeleccionado.cliente}, te escribo desde Atelier por tu pedido de ${pedidoSeleccionado.prenda}.` 
-                  : `Hola, le escribo por los detalles de mi pedido de ${pedidoSeleccionado.prenda} (${pedidoSeleccionado.id}).`;
-                const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+            <div className="bg-stone-950/80 border border-stone-800 p-6 rounded-2xl mb-6 shadow-inner">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                <h3 className="text-base font-bold text-white">Control de Pagos y Adelantos</h3>
+                <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${pedidoSeleccionado.pagado ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-amber-950 text-amber-300 border border-amber-900/50'}`}>
+                  {pedidoSeleccionado.pagado ? 'Pagado Total' : `Saldo Pendiente: $${saldoPendiente.toLocaleString()}`}
+                </span>
+              </div>
 
-                return (
-                  <a
-                    href={urlWhatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-8 w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors block text-center"
-                  >
-                    <svg className="w-4 h-4 fill-current inline-block" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                    </svg>
-                    {esAdmin ? 'Abrir chat de WhatsApp con el cliente' : 'Contactar con el Atelier por WhatsApp'}
-                  </a>
-                );
-              })()}
+              <div className="w-full bg-stone-900 h-3 rounded-full overflow-hidden mb-4 border border-stone-800">
+                <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${porcentajePagado}%` }}></div>
+              </div>
 
-              <h3 className="text-lg font-semibold mb-4">Fotos del Trabajo</h3>
-              {arrayFotos.length === 0 ? (
-                  <p className="text-stone-500 text-xs italic mb-4">No hay fotos guardadas en este pedido.</p>
-              ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
-                    {arrayFotos.map((img, i) => (
-                      <img 
-                        key={i} 
-                        src={img} 
-                        alt={`Trabajo ${i+1}`} 
-                        className="w-32 h-32 object-cover rounded-xl border border-stone-800 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
-                        onClick={() => setFotoAmpliada(img)}
-                      />
-                    ))}
-                  </div>
+              <div className="flex justify-between text-xs text-stone-400 mb-5">
+                <span>Abonado: <strong className="text-white">${totalAbonado.toLocaleString()}</strong></span>
+                <span>Total prenda: <strong className="text-white">${precioTotal.toLocaleString()}</strong> ({porcentajePagado}%)</span>
+              </div>
+
+              {pagosRealizados.length > 0 && (
+                <div className="space-y-2.5 mb-5">
+                  <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold">Historial de entregas de dinero:</p>
+                  {pagosRealizados.map((pago) => (
+                    <div key={pago.id} className="flex justify-between items-center bg-stone-900/90 p-3 rounded-xl border border-stone-800 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-emerald-400 text-sm">${pago.monto.toLocaleString()}</span>
+                        <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-[11px]">{pago.metodo}</span>
+                        <span className="text-stone-500 text-[11px]">{pago.fecha}</span>
+                      </div>
+                      {esAdmin && (
+                        <button 
+                          onClick={() => eliminarPagoParcial(pago.id)}
+                          className="text-stone-400 hover:text-red-400 p-1 font-bold text-sm"
+                          title="Eliminar pago"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
 
-              {esAdmin && (
-                <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    setIsSaving(true);
-                    try {
-                      const archivoFoto = e.target.nuevaFotoArchivo.files[0];
-                      let url = "";
-                      if (archivoFoto) {
-                        url = await subirACloudinary(archivoFoto);
-                      }
-                      if (url) {
-                        const fotosActualizadas = [...arrayFotos, url];
-                        const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
-                        await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
-                        setPedidoSeleccionado(actualizado);
-                        e.target.reset();
-                        mostrarToast("Foto agregada con éxito");
-                      }
-                    } catch (err) {
-                      mostrarToast("Error al agregar foto");
-                    } finally {
-                      setIsSaving(false);
-                    }
-                }} className="flex flex-col sm:flex-row gap-2">
-                    <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2.5 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
-                    <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
-                </form>
+              {/* AQUÍ SE APLICÓ LA CORRECCIÓN: Se añadió && pedidoSeleccionado.precio > 0 */}
+              {esAdmin && pedidoSeleccionado.precio > 0 && (
+                <button
+                  onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
+                  className="w-full bg-white text-stone-950 py-3.5 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
+                >
+                  + Registrar Nuevo Pago / Seña
+                </button>
               )}
             </div>
-          );
-        })()}
+
+            {(() => {
+              const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
+              if (!telefonoContacto) return null;
+              const mensaje = esAdmin 
+                ? `Hola ${pedidoSeleccionado.cliente}, te escribo desde Atelier por tu pedido de ${pedidoSeleccionado.prenda}.` 
+                : `Hola, le escribo por los detalles de mi pedido de ${pedidoSeleccionado.prenda} (${pedidoSeleccionado.id}).`;
+              const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+
+              return (
+                <a
+                  href={urlWhatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mb-8 w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors block text-center"
+                >
+                  <svg className="w-4 h-4 fill-current inline-block" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                  </svg>
+                  {esAdmin ? 'Abrir chat de WhatsApp con el cliente' : 'Contactar con el Atelier por WhatsApp'}
+                </a>
+              );
+            })()}
+
+            <h3 className="text-lg font-semibold mb-4">Fotos del Trabajo</h3>
+            {arrayFotos.length === 0 ? (
+                <p className="text-stone-500 text-xs italic mb-4">No hay fotos guardadas en este pedido.</p>
+            ) : (
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
+                  {arrayFotos.map((img, i) => (
+                    <img 
+                      key={i} 
+                      src={img} 
+                      alt={`Trabajo ${i+1}`} 
+                      className="w-32 h-32 object-cover rounded-xl border border-stone-800 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
+                      onClick={() => setFotoAmpliada(img)}
+                    />
+                  ))}
+                </div>
+            )}
+
+            {esAdmin && (
+              <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsSaving(true);
+                  try {
+                    const archivoFoto = e.target.nuevaFotoArchivo.files[0];
+                    let url = "";
+                    if (archivoFoto) {
+                      url = await subirACloudinary(archivoFoto);
+                    }
+                    if (url) {
+                      const fotosActualizadas = [...arrayFotos, url];
+                      const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
+                      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+                      setPedidoSeleccionado(actualizado);
+                      e.target.reset();
+                      mostrarToast("Foto agregada con éxito");
+                    }
+                  } catch (err) {
+                    mostrarToast("Error al agregar foto");
+                  } finally {
+                    setIsSaving(false);
+                  }
+              }} className="flex flex-col sm:flex-row gap-2">
+                  <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2.5 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+                  <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
+              </form>
+            )}
+          </div>
+        );
+      })()}
 
         {vista === 'nuevo-pedido' && (
-           <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">{esAdmin ? 'Crear Nuevo Pedido' : 'Solicitar Nuevo Pedido'}</h2>
-             
-             {esAdmin ? (
+            <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">{esAdmin ? 'Crear Nuevo Pedido' : 'Solicitar Nuevo Pedido'}</h2>
+               
+              {esAdmin ? (
                <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
                  <option value="">Seleccionar Cliente</option>
                  {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
                </select>
-             ) : (
+              ) : (
                <div className="mb-4 bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-stone-400">
                  Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
                </div>
-             )}
+              )}
 
-             <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             
-             {!esAdmin && (() => {
-               const nombreActual = user.displayName || user.email;
-               const clienteExistente = clientes.find(c => c.nombre && c.nombre.toLowerCase() === nombreActual.toLowerCase());
-               const tieneTelefonoRegistrado = clienteExistente && clienteExistente.telefono && clienteExistente.telefono.trim() !== '';
+              <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               
+              {!esAdmin && (() => {
+              const nombreActual = user.displayName || user.email;
+              const clienteExistente = clientes.find(c => c.nombre && c.nombre.toLowerCase() === nombreActual.toLowerCase());
+              const tieneTelefonoRegistrado = clienteExistente && clienteExistente.telefono && clienteExistente.telefono.trim() !== '';
 
-               if (tieneTelefonoRegistrado) {
-                 return <input type="hidden" name="telefono" value={clienteExistente.telefono} />;
-               }
+              if (tieneTelefonoRegistrado) {
+                return <input type="hidden" name="telefono" value={clienteExistente.telefono} />;
+              }
 
-               return (
-                 <input name="telefono" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-               );
-             })()}
+              return (
+                <input name="telefono" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              );
+            })()}
 
-             {!esAdmin && (
-               <div>
-                 <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
-                 <textarea 
-                   name="descripcionDetalle" 
-                   rows="3" 
-                   placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
-                   className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
-                   required 
-                 />
-               </div>
-             )}
-             
-             {esAdmin ? (
-               <>
-                 <select name="tela" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none">
-                   <option value="">Seleccionar Tela (Opcional)</option>
-                   {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
-                 </select>
-                 <div className="mb-4">
-                   <label className="block text-xs text-stone-400 mb-1">Foto del Pedido (Opcional)</label>
-                   <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
-                 </div>
-               </>
-             ) : (
-               <div className="mb-4">
-                 <label className="block text-xs text-stone-400 mb-1">Subir foto de ejemplo o diseño (Opcional)</label>
-                 <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
-               </div>
-             )}
+              {!esAdmin && (
+                <div>
+                  <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
+                  <textarea 
+                    name="descripcionDetalle" 
+                    rows="3" 
+                    placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
+                    className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
+                    required 
+                  />
+                </div>
+              )}
+               
+              {esAdmin ? (
+                <>
+                  <select name="tela" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none">
+                    <option value="">Seleccionar Tela (Opcional)</option>
+                    {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                  </select>
+                  <div className="mb-4">
+                    <label className="block text-xs text-stone-400 mb-1">Foto del Pedido (Opcional)</label>
+                    <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+                  </div>
+                </>
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-xs text-stone-400 mb-1">Subir foto de ejemplo o diseño (Opcional)</label>
+                  <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+                </div>
+              )}
 
-             <div className="flex gap-3">
-               <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
-               <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">
-                 {isSaving ? 'Guardando...' : (esAdmin ? 'Crear Pedido' : 'Enviar Solicitud')}
-               </button>
-             </div>
-           </form>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
+                <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">
+                  {isSaving ? 'Guardando...' : (esAdmin ? 'Crear Pedido' : 'Enviar Solicitud')}
+                </button>
+              </div>
+            </form>
         )}
 
         {esAdmin && vista === 'nuevo-cliente' && (
-           <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
-             <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="telefono" placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
-               {MEDIDAS_LISTA.map(m => (
-                 <div key={m} className="flex flex-col gap-1">
-                   <label className="text-stone-500 pl-1">{m}</label>
-                   <input name={m} className="bg-stone-950 p-2 rounded border border-stone-800 outline-none" />
-                 </div>
-               ))}
-             </div>
-             
-             <div className="flex gap-3 mt-4">
-               <button type="button" onClick={() => cambiarVista('clientes')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
-               <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar</button>
-             </div>
-           </form>
+            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
+              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="telefono" placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
+                {MEDIDAS_LISTA.map(m => (
+                  <div key={m} className="flex flex-col gap-1">
+                    <label className="text-stone-500 pl-1">{m}</label>
+                    <input name={m} className="bg-stone-950 p-2 rounded border border-stone-800 outline-none" />
+                  </div>
+                ))}
+              </div>
+               
+              <div className="flex gap-3 mt-4">
+                <button type="button" onClick={() => cambiarVista('clientes')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
+                <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar</button>
+              </div>
+            </form>
         )}
 
         {esAdmin && vista === 'editar-cliente' && clienteSeleccionado && (
-           <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Editar Cliente y Medidas</h2>
-             <input name="nombre" defaultValue={clienteSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="telefono" defaultValue={clienteSeleccionado.telefono} placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
-               {MEDIDAS_LISTA.map(m => (
-                 <div key={m} className="flex flex-col gap-1">
-                   <label className="text-stone-500 pl-1">{m}</label>
-                   <input name={m} defaultValue={clienteSeleccionado.medidas?.[m] || ''} className="bg-stone-950 p-2 rounded border border-stone-800 outline-none" />
-                 </div>
-               ))}
-             </div>
-             
-             <div className="flex gap-3 mt-4">
-               <button type="button" onClick={() => cambiarVista('detalle-cliente')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
-               <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
-             </div>
-           </form>
+            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Editar Cliente y Medidas</h2>
+              <input name="nombre" defaultValue={clienteSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="telefono" defaultValue={clienteSeleccionado.telefono} placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
+                {MEDIDAS_LISTA.map(m => (
+                  <div key={m} className="flex flex-col gap-1">
+                    <label className="text-stone-500 pl-1">{m}</label>
+                    <input name={m} defaultValue={clienteSeleccionado.medidas?.[m] || ''} className="bg-stone-950 p-2 rounded border border-stone-800 outline-none" />
+                  </div>
+                ))}
+              </div>
+               
+              <div className="flex gap-3 mt-4">
+                <button type="button" onClick={() => cambiarVista('detalle-cliente')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
+                <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+              </div>
+            </form>
         )}
 
         {esAdmin && vista === 'nueva-tela' && (
-           <form onSubmit={guardarTela} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Nueva Tela</h2>
-             <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="precio" type="number" min="0" placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             
-             <div className="mb-4">
-               <label className="block text-xs text-stone-400 mb-1">Foto de la Tela</label>
-               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
-             </div>
+            <form onSubmit={guardarTela} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Nueva Tela</h2>
+              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="precio" type="number" min="0" placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+               
+              <div className="mb-4">
+                <label className="block text-xs text-stone-400 mb-1">Foto de la Tela</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+              </div>
 
-             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
-           </form>
+              <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
+            </form>
         )}
 
         {esAdmin && vista === 'nuevo-avio' && (
-           <form onSubmit={guardarAvio} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Nuevo Avío</h2>
-             <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             
-             <div className="mb-4">
-               <label className="block text-xs text-stone-400 mb-1">Foto del Avío</label>
-               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
-             </div>
+            <form onSubmit={guardarAvio} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Nuevo Avío</h2>
+              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+               
+              <div className="mb-4">
+                <label className="block text-xs text-stone-400 mb-1">Foto del Avío</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+              </div>
 
-             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Avío</button>
-           </form>
+              <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Avío</button>
+            </form>
         )}
 
         {esAdmin && vista === 'editar-tela' && telaSeleccionada && (
-           <form onSubmit={actualizarTelaEditada} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Editar Tela</h2>
-             <input name="nombre" defaultValue={telaSeleccionada.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="desc" defaultValue={telaSeleccionada.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="uso" defaultValue={telaSeleccionada.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="stock" defaultValue={telaSeleccionada.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="precio" type="number" min="0" defaultValue={telaSeleccionada.precio || ''} placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             
-             <div className="mb-4">
-               <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
-               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
-             </div>
+            <form onSubmit={actualizarTelaEditada} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Editar Tela</h2>
+              <input name="nombre" defaultValue={telaSeleccionada.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="desc" defaultValue={telaSeleccionada.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="uso" defaultValue={telaSeleccionada.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" defaultValue={telaSeleccionada.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="precio" type="number" min="0" defaultValue={telaSeleccionada.precio || ''} placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+               
+              <div className="mb-4">
+                <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+              </div>
 
-             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
-           </form>
+              <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+            </form>
         )}
 
         {esAdmin && vista === 'editar-avio' && avioSeleccionado && (
-           <form onSubmit={actualizarAvioEditado} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Editar Avío</h2>
-             <input name="nombre" defaultValue={avioSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="desc" defaultValue={avioSeleccionado.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="uso" defaultValue={avioSeleccionado.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="stock" defaultValue={avioSeleccionado.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             
-             <div className="mb-4">
-               <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
-               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
-             </div>
+            <form onSubmit={actualizarAvioEditado} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+              <h2 className="text-2xl font-bold mb-6">Editar Avío</h2>
+              <input name="nombre" defaultValue={avioSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+              <input name="desc" defaultValue={avioSeleccionado.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="uso" defaultValue={avioSeleccionado.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" defaultValue={avioSeleccionado.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+               
+              <div className="mb-4">
+                <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+              </div>
 
-             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
-           </form>
+              <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+            </form>
         )}
 
         {esAdmin && vista === 'catalogo' && (
@@ -1839,7 +1840,7 @@ export default function App() {
               <button onClick={() => cambiarVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
               <h2 className="text-3xl font-bold mb-1">{clienteSeleccionado.nombre}</h2>
               <p className="text-stone-400 text-sm mb-6">{clienteSeleccionado.telefono}</p>
-              
+               
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <button onClick={() => cambiarVista('editar-cliente')} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Editar Datos y Medidas</button>
                 <button onClick={() => window.print()} className="bg-stone-800 px-4 py-3 sm:py-2 rounded-xl text-sm sm:text-xs border border-stone-700 hover:bg-stone-700 font-medium">Imprimir Ficha</button>
@@ -1874,7 +1875,7 @@ export default function App() {
                       >
                         ✕
                       </button>
-                      
+                       
                       <div className="flex justify-between items-center pr-6">
                         <span className="text-xs font-bold">{p.prenda} (<span className={esRechazado ? "text-red-400" : ""}>{p.estado}</span>)</span>
                         <span className="text-xs text-stone-400">{p.entrega}</span>
@@ -1887,7 +1888,7 @@ export default function App() {
                       {esRechazado && p.motivoRechazo && (
                         <p className="text-xs text-red-300 bg-red-950/40 p-2 rounded-xl"><strong>Motivo rechazo:</strong> {p.motivoRechazo}</p>
                       )}
-                      
+                       
                       <div className="text-sm font-semibold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio asignado'}</div>
 
                       {arrayFotos.length > 0 && (
@@ -1960,7 +1961,7 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl md:col-span-2">
               <h2 className="text-2xl mb-6 font-light">Calculadora (Tela en Centímetros)</h2>
-              
+               
               <div className="mb-4">
                 <label className="block text-xs text-stone-400 mb-1">Cargar precio desde Catálogo de Telas (Opcional):</label>
                 <select 
@@ -2111,19 +2112,19 @@ export default function App() {
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center">
             <h3 className="text-xl font-bold mb-1 text-white">Datos para Transferencia</h3>
             <p className="text-stone-400 text-xs mb-6">Realiza el pago con el presupuesto asignado para tu pedido ({modalAlias.pedido.id}).</p>
-            
+             
             <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800 text-left space-y-3 mb-6">
               <div>
                 <span className="text-[10px] uppercase text-stone-500 block">Alias de pago:</span>
-                <span className="text-sm font-bold text-emerald-400 select-all">atelier.taller.mp</span>
+                <span className="text-sm font-bold text-emerald-400 select-all">guille.lederhos</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase text-stone-500 block">CVU / CBU:</span>
-                <span className="text-xs font-mono text-stone-200 select-all">0000003100012345678901</span>
+                <span className="text-xs font-mono text-stone-200 select-all">0000003100035092562684</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase text-stone-500 block">Titular:</span>
-                <span className="text-xs text-stone-300">Atelier Confecciones</span>
+                <span className="text-xs text-stone-300">Guillermina Lederhos Jauberts</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase text-stone-500 block">Monto Total a Pagar:</span>
@@ -2148,7 +2149,7 @@ export default function App() {
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full shadow-2xl">
             <h3 className="text-xl font-bold mb-2 text-white">Registrar Pago / Adelanto</h3>
             <p className="text-stone-400 text-xs mb-4">Ingresa el monto recibido por parte del cliente:</p>
-            
+             
             <div className="space-y-3 mb-6">
               <div>
                 <label className="text-xs text-stone-500 pl-1">Monto ($)</label>
@@ -2251,7 +2252,7 @@ export default function App() {
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
             <h3 className="text-xl font-bold mb-4 text-white">Atención</h3>
             <p className="text-stone-400 text-sm mb-8">{modalConfirm.text}</p>
-            
+             
             {modalConfirm.buttons ? (
               <div className="flex flex-col gap-3">
                 {modalConfirm.buttons.map((btn, idx) => (
@@ -2297,5 +2298,5 @@ export default function App() {
       )}
 
     </div>
-  );
+  ); 
 }
