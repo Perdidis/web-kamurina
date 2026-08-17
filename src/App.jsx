@@ -71,9 +71,6 @@ export default function App() {
   const [modalPago, setModalPago] = useState({ isOpen: false, pedidoId: null });
   const [montoPagoInput, setMontoPagoInput] = useState('');
   const [metodoPagoInput, setMetodoPagoInput] = useState('Efectivo');
-  
-  const [editandoEstadoId, setEditandoEstadoId] = useState(null);
-  const [nuevoEstadoTexto, setNuevoEstadoTexto] = useState('');
 
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
   const [pedidos, setPedidos] = useState(INITIAL_PEDIDOS);
@@ -745,7 +742,6 @@ export default function App() {
     return timeB - timeA;
   });
 
-  // KPI 1 y 2
   const totalPedidosActivos = pedidos.filter(p => !p.ocultoDashboard && p.estado !== 'Rechazado' && p.estado !== 'Entregado con éxito').length;
   const ingresosDelMes = pedidos.reduce((acc, p) => {
     if (p.ocultoDashboard || !p.precio || p.precio <= 0) return acc;
@@ -853,7 +849,6 @@ export default function App() {
     <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
       <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center" />
 
-      {/* TOAST NOTIFICACIÓN */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-[200] bg-stone-900 border border-stone-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -916,7 +911,6 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
           <div>
-            {/* KPI CARDS ARRIBA (Punto 1) */}
             {esAdmin && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-stone-900/60 border border-stone-800 p-5 rounded-3xl flex items-center justify-between backdrop-blur-md">
@@ -1017,51 +1011,22 @@ export default function App() {
 
                       {esAdmin ? (
                         <div onClick={(e) => e.stopPropagation()} className="mb-2">
-                          {editandoEstadoId === p.id ? (
-                            <div className="flex gap-1 mt-1">
-                              <input 
-                                type="text"
-                                value={nuevoEstadoTexto}
-                                onChange={(e) => setNuevoEstadoTexto(e.target.value)}
-                                className="w-full bg-stone-950 border border-stone-700 p-1.5 rounded-xl text-xs text-white outline-none"
-                                placeholder="Escribe el estado..."
-                                autoFocus
-                              />
-                              <button 
-                                onClick={async () => {
-                                  if (nuevoEstadoTexto.trim()) {
-                                    await actualizarEstado(p.id, nuevoEstadoTexto.trim());
-                                  }
-                                  setEditandoEstadoId(null);
-                                }}
-                                className="bg-white text-stone-950 px-2.5 rounded-xl text-xs font-bold"
-                              >
-                                ✓
-                              </button>
-                              <button 
-                                onClick={() => setEditandoEstadoId(null)}
-                                className="bg-stone-800 text-stone-400 px-2 rounded-xl text-xs"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
-                              <span className="text-stone-300">Estado: <strong className="text-white">{p.estado}</strong></span>
-                              <button 
-                                onClick={() => {
-                                  setEditandoEstadoId(p.id);
-                                  setNuevoEstadoTexto(p.estado);
-                                }}
-                                className="text-stone-400 hover:text-white p-1 transition-colors"
-                                title="Editar estado"
-                              >
-                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                                </svg>
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
+                            <span className="text-stone-300">Estado:</span>
+                            <select
+                              value={p.estado}
+                              onChange={(e) => actualizarEstado(p.id, e.target.value)}
+                              className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
+                            >
+                              <option value="Pendiente de Aprobación">Pendiente de Aprobación</option>
+                              <option value="Eligiendo telas">Eligiendo telas</option>
+                              <option value="En confección / Pruebas">En confección / Pruebas</option>
+                              <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
+                              <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
+                              <option value="Entregado con éxito">Entregado con éxito</option>
+                              <option value="Rechazado">Rechazado</option>
+                            </select>
+                          </div>
                         </div>
                       ) : (
                         <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
@@ -1082,7 +1047,6 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* BOTÓN REGISTRAR PAGO DIRECTO EN TARJETA (Punto 6) */}
                       {esAdmin && (
                         <button
                           onClick={(e) => {
@@ -1213,6 +1177,7 @@ export default function App() {
                     }
                     try {
                       const nuevoEstado = fd.get('estado');
+                      const nuevaEntrega = fd.get('entrega');
                       const actualizado = {
                           ...pedidoSeleccionado,
                           prenda: fd.get('prenda'),
@@ -1220,6 +1185,7 @@ export default function App() {
                           precio: precioNuevo,
                           gastos: Number(fd.get('gastos')) || 0,
                           estado: nuevoEstado,
+                          entrega: nuevaEntrega,
                           motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : '',
                           ocultoDashboard: nuevoEstado === 'Rechazado' ? true : pedidoSeleccionado.ocultoDashboard
                       };
@@ -1250,6 +1216,10 @@ export default function App() {
                         <div>
                             <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
                             <input name="gastos" type="number" min="0" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega (Ganancias)</label>
+                            <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega || ''} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none text-white" />
                         </div>
                         <div className="col-span-1 sm:col-span-2">
                             <label className="text-stone-500 pl-1 text-xs">Estado Logístico / Confección</label>
@@ -1938,7 +1908,6 @@ export default function App() {
         <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
       )}
 
-      {/* MODAL PARA AGREGAR NUEVO PAGO / SEÑA */}
       {modalPago.isOpen && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full shadow-2xl">
