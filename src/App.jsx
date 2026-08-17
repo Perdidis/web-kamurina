@@ -33,7 +33,7 @@ const MEDIDAS_LISTA = [
   'Altura Tiro de Pantalón', 'Largo de Pantalón', 'Largo de Falda', 'Altura de Rodilla'
 ];
 
-const ESTADOS_PEDIDO = ['Pendiente de Aprobación', 'Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 'Finalizado'];
+const ESTADOS_PEDIDO = ['Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 'Finalizado'];
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -524,7 +524,8 @@ export default function App() {
         await setDoc(doc(db, "pedidos", String(modalRechazo.pedidoId)), { 
           ...pedido, 
           estado: 'Rechazado', 
-          motivoRechazo: modalRechazo.motivo 
+          motivoRechazo: modalRechazo.motivo,
+          ocultoDashboard: true 
         }, { merge: true });
       }
       setModalRechazo({ isOpen: false, pedidoId: null, motivo: '' });
@@ -585,7 +586,7 @@ export default function App() {
       const nombreUsuario = user.displayName || user.email;
       if (p.cliente !== nombreUsuario) return false;
     } else {
-      if (p.estado === 'Pendiente de Aprobación') return false;
+      if (p.estado === 'Pendiente de Aprobación' || p.estado === 'Rechazado') return false;
     }
 
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
@@ -748,7 +749,6 @@ export default function App() {
           
           {esAdmin && (
             <>
-              {/* Contenedor adaptado para evitar superposición en móviles */}
               <button onClick={() => cambiarVista('solicitudes')} className={`whitespace-nowrap relative inline-flex items-center ${vista === 'solicitudes' ? 'text-white' : ''}`}>
                 <span>Solicitudes</span>
                 {solicitudesPendientesAdmin.length > 0 && (
@@ -958,7 +958,8 @@ export default function App() {
                           precio: Number(fd.get('precio')),
                           gastos: Number(fd.get('gastos')) || 0,
                           estado: nuevoEstado,
-                          motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : ''
+                          motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : '',
+                          ocultoDashboard: nuevoEstado === 'Rechazado' ? true : pedidoSeleccionado.ocultoDashboard
                       };
                       await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
                       setPedidoSeleccionado(actualizado);
