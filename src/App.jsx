@@ -470,7 +470,7 @@ export default function App() {
       };
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
-      mostrarToast("¡Solicitud enviada con éxito!");
+      mostrarToast(esAdmin ? "¡Pedido creado con éxito!" : "¡Solicitud enviada con éxito!");
 
       if (!esAdmin) {
         const nombreBuscado = nombreCliente.toLowerCase();
@@ -552,6 +552,10 @@ export default function App() {
   const borrarPedidoDefinitivo = async (id) => {
     try {
       await deleteDoc(doc(db, "pedidos", String(id)));
+      if (pedidoSeleccionado?.id === id) {
+        setPedidoSeleccionado(null);
+      }
+      cambiarVista('dashboard');
       mostrarToast("Pedido eliminado definitivamente");
     } catch (err) {
       mostrarToast("Error al borrar pedido");
@@ -950,14 +954,12 @@ export default function App() {
                   className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl outline-none text-sm text-white backdrop-blur-md" 
                 />
               </div>
-              {!esAdmin && (
-                <button 
-                  onClick={() => cambiarVista('nuevo-pedido')}
-                  className="w-full md:w-auto bg-white text-stone-950 px-6 py-4 rounded-2xl font-bold text-sm whitespace-nowrap hover:bg-stone-200 transition-colors"
-                >
-                  + Solicitar Pedido
-                </button>
-              )}
+              <button 
+                onClick={() => cambiarVista('nuevo-pedido')}
+                className="w-full md:w-auto bg-white text-stone-950 px-6 py-4 rounded-2xl font-bold text-sm whitespace-nowrap hover:bg-stone-200 transition-colors"
+              >
+                {esAdmin ? '+ Crear Pedido' : '+ Solicitar Pedido'}
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
@@ -1359,7 +1361,7 @@ export default function App() {
 
         {vista === 'nuevo-pedido' && (
            <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Solicitar Nuevo Pedido</h2>
+             <h2 className="text-2xl font-bold mb-6">{esAdmin ? 'Crear Nuevo Pedido' : 'Solicitar Nuevo Pedido'}</h2>
              
              {esAdmin ? (
                <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
@@ -1388,16 +1390,18 @@ export default function App() {
                );
              })()}
 
-             <div>
-               <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
-               <textarea 
-                 name="descripcionDetalle" 
-                 rows="3" 
-                 placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
-                 className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
-                 required 
-               />
-             </div>
+             {!esAdmin && (
+               <div>
+                 <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
+                 <textarea 
+                   name="descripcionDetalle" 
+                   rows="3" 
+                   placeholder="Detalla aquí color, forma, tipo de tela, etc..." 
+                   className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-sm text-white resize-none" 
+                   required 
+                 />
+               </div>
+             )}
              
              {esAdmin && (
                <>
@@ -1412,7 +1416,7 @@ export default function App() {
              <div className="flex gap-3">
                <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
                <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">
-                 {isSaving ? 'Enviando...' : 'Enviar Solicitud'}
+                 {isSaving ? 'Guardando...' : (esAdmin ? 'Crear Pedido' : 'Enviar Solicitud')}
                </button>
              </div>
            </form>
