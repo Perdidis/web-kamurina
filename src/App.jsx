@@ -14,6 +14,32 @@ const firebaseConfig = {
   measurementId: "G-6TKCHM61D7"
 };
 
+const CLOUDINARY_CLOUD_NAME = "t3cunnct"; // Reemplaza aquí con tu Cloud Name de Cloudinary
+const CLOUDINARY_UPLOAD_PRESET = "atelier_preset"; // Reemplaza aquí con tu preset unsigned
+
+const subirACloudinary = async (archivo) => {
+  if (!archivo) return "";
+  const formData = new FormData();
+  formData.append("file", archivo);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json();
+    if (data.secure_url) {
+      return data.secure_url;
+    } else {
+      throw new Error("Error al subir la imagen a Cloudinary");
+    }
+  } catch (error) {
+    console.error("Error en subida:", error);
+    throw error;
+  }
+};
+
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
@@ -337,13 +363,22 @@ export default function App() {
 
   const guardarTela = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     const fd = new FormData(e.target);
     const precio = Number(fd.get('precio'));
     if (precio < 0) {
       mostrarToast("⚠️ El precio no puede ser negativo");
+      setIsSaving(false);
       return;
     }
     try {
+      const archivoFoto = fd.get('fotoArchivo');
+      let urlFoto = "";
+      if (archivoFoto && archivoFoto.size > 0) {
+        urlFoto = await subirACloudinary(archivoFoto);
+      }
+
       const id = crypto.randomUUID();
       const nueva = { 
         id, 
@@ -352,25 +387,36 @@ export default function App() {
         uso: fd.get('uso'), 
         stock: fd.get('stock'), 
         precio: precio || 0,
-        foto: fd.get('foto') 
+        foto: urlFoto 
       };
       await setDoc(doc(db, "telas", String(id)), nueva);
       mostrarToast("Tela guardada con éxito");
       cambiarVista('catalogo');
     } catch (err) {
       mostrarToast("Error al guardar tela");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const actualizarTelaEditada = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     const fd = new FormData(e.target);
     const precio = Number(fd.get('precio'));
     if (precio < 0) {
       mostrarToast("⚠️ El precio no puede ser negativo");
+      setIsSaving(false);
       return;
     }
     try {
+      const archivoFoto = fd.get('fotoArchivo');
+      let urlFoto = telaSeleccionada.foto;
+      if (archivoFoto && archivoFoto.size > 0) {
+        urlFoto = await subirACloudinary(archivoFoto);
+      }
+
       const actualizada = { 
         ...telaSeleccionada, 
         nombre: fd.get('nombre'), 
@@ -378,7 +424,7 @@ export default function App() {
         uso: fd.get('uso'), 
         stock: fd.get('stock'), 
         precio: precio || 0,
-        foto: fd.get('foto') 
+        foto: urlFoto 
       };
       await setDoc(doc(db, "telas", String(telaSeleccionada.id)), actualizada);
       setTelaSeleccionada(actualizada);
@@ -386,34 +432,54 @@ export default function App() {
       cambiarVista('detalle-tela');
     } catch (err) {
       mostrarToast("Error al actualizar tela");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const guardarAvio = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const fd = new FormData(e.target);
+      const archivoFoto = fd.get('fotoArchivo');
+      let urlFoto = "";
+      if (archivoFoto && archivoFoto.size > 0) {
+        urlFoto = await subirACloudinary(archivoFoto);
+      }
+
       const id = crypto.randomUUID();
-      const nuevo = { id, nombre: fd.get('nombre'), descripcion: fd.get('desc'), uso: fd.get('uso'), stock: fd.get('stock'), foto: fd.get('foto') };
+      const nuevo = { id, nombre: fd.get('nombre'), descripcion: fd.get('desc'), uso: fd.get('uso'), stock: fd.get('stock'), foto: urlFoto };
       await setDoc(doc(db, "avios", String(id)), nuevo);
       mostrarToast("Avío guardado con éxito");
       cambiarVista('catalogo-avios');
     } catch (err) {
       mostrarToast("Error al guardar avío");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const actualizarAvioEditado = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const fd = new FormData(e.target);
+      const archivoFoto = fd.get('fotoArchivo');
+      let urlFoto = avioSeleccionado.foto;
+      if (archivoFoto && archivoFoto.size > 0) {
+        urlFoto = await subirACloudinary(archivoFoto);
+      }
+
       const actualizado = { 
         ...avioSeleccionado, 
         nombre: fd.get('nombre'), 
         descripcion: fd.get('desc'), 
         uso: fd.get('uso'), 
         stock: fd.get('stock'), 
-        foto: fd.get('foto') 
+        foto: urlFoto 
       };
       await setDoc(doc(db, "avios", String(avioSeleccionado.id)), actualizado);
       setAvioSeleccionado(actualizado);
@@ -421,6 +487,8 @@ export default function App() {
       cambiarVista('detalle-avio');
     } catch (err) {
       mostrarToast("Error al actualizar avío");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -435,6 +503,12 @@ export default function App() {
         mostrarToast("⚠️ El teléfono debe contener solo números (6 a 15 dígitos)");
         setIsSaving(false);
         return;
+      }
+
+      const archivoFoto = fd.get('fotoArchivo');
+      let urlFoto = "";
+      if (archivoFoto && archivoFoto.size > 0) {
+        urlFoto = await subirACloudinary(archivoFoto);
       }
 
       const timestamp = Date.now();
@@ -460,8 +534,8 @@ export default function App() {
           pagado: false,
           pagos: [], 
           tela: fd.get('tela') || '',
-          foto: fd.get('foto') || '',
-          fotos: fd.get('foto') ? [fd.get('foto')] : [],
+          foto: urlFoto || '',
+          fotos: urlFoto ? [urlFoto] : [],
           ocultoDashboard: false,
           materialesCosto: 0,
           manoObraCosto: 0,
@@ -746,7 +820,7 @@ export default function App() {
     return timeB - timeA;
   });
 
-  const totalPedidosActivos = pedidos.filter(p => !p.ocultoDashboard && p.estado !== 'Rechazado' && p.estado !== 'Entregado con éxito').length;
+  const totalPedidosActivos = pedidos.filter(p => !p.ocultoDashboard && p.estado !== 'Rechazado' && p.estado !== 'Pendiente de Aprobación' && p.estado !== 'Entregado con éxito').length;
   const ingresosDelMes = pedidos.reduce((acc, p) => {
     if (p.ocultoDashboard || !p.precio || p.precio <= 0) return acc;
     const sumaPagos = (p.pagos || []).reduce((sub, pay) => sub + pay.monto, 0);
@@ -807,8 +881,8 @@ export default function App() {
                     {error && <p className="text-red-400 text-xs text-center">{error}</p>}
                     
                     <button 
-                      type="submit" 
-                      className={`w-full py-3 rounded-xl font-bold transition-all duration-300 ${isLoginView ? 'bg-white text-stone-950 hover:bg-stone-200' : 'bg-stone-800 text-white hover:bg-stone-700 border border-stone-600'}`}
+                    type="submit" 
+                    className={`w-full py-3 rounded-xl font-bold transition-all duration-300 ${isLoginView ? 'bg-white text-stone-950 hover:bg-stone-200' : 'bg-stone-800 text-white hover:bg-stone-700 border border-stone-600'}`}
                     >
                         {isLoginView ? 'Iniciar Sesión' : 'Registrarme'}
                     </button>
@@ -857,6 +931,15 @@ export default function App() {
         <div className="fixed top-6 right-6 z-[200] bg-stone-900 border border-stone-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span className="text-xs font-bold">{toastMessage}</span>
+        </div>
+      )}
+
+      {isSaving && (
+        <div className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-stone-900 border border-stone-700 px-6 py-4 rounded-2xl text-white text-sm font-bold flex items-center gap-3">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            Subiendo archivos a Cloudinary y guardando...
+          </div>
         </div>
       )}
 
@@ -1339,19 +1422,28 @@ export default function App() {
               {esAdmin && (
                 <form onSubmit={async (e) => {
                     e.preventDefault();
+                    setIsSaving(true);
                     try {
-                      const url = e.target.nuevaFoto.value;
-                      const fotosActualizadas = [...arrayFotos, url];
-                      const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
-                      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
-                      setPedidoSeleccionado(actualizado);
-                      e.target.reset();
-                      mostrarToast("Foto agregada con éxito");
+                      const archivoFoto = e.target.nuevaFotoArchivo.files[0];
+                      let url = "";
+                      if (archivoFoto) {
+                        url = await subirACloudinary(archivoFoto);
+                      }
+                      if (url) {
+                        const fotosActualizadas = [...arrayFotos, url];
+                        const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
+                        await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+                        setPedidoSeleccionado(actualizado);
+                        e.target.reset();
+                        mostrarToast("Foto agregada con éxito");
+                      }
                     } catch (err) {
                       mostrarToast("Error al agregar foto");
+                    } finally {
+                      setIsSaving(false);
                     }
                 }} className="flex flex-col sm:flex-row gap-2">
-                    <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-3 rounded-xl border border-stone-800 outline-none text-sm" required />
+                    <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2.5 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
                     <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
                 </form>
               )}
@@ -1403,14 +1495,22 @@ export default function App() {
                </div>
              )}
              
-             {esAdmin && (
+             {esAdmin ? (
                <>
                  <select name="tela" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none">
                    <option value="">Seleccionar Tela (Opcional)</option>
                    {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
                  </select>
-                 <input name="foto" placeholder="URL Foto del Pedido (Opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+                 <div className="mb-4">
+                   <label className="block text-xs text-stone-400 mb-1">Foto del Pedido (Opcional)</label>
+                   <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+                 </div>
                </>
+             ) : (
+               <div className="mb-4">
+                 <label className="block text-xs text-stone-400 mb-1">Subir foto de ejemplo o diseño (Opcional)</label>
+                 <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+               </div>
              )}
 
              <div className="flex gap-3">
@@ -1474,8 +1574,13 @@ export default function App() {
              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="precio" type="number" min="0" placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="foto" placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
+             
+             <div className="mb-4">
+               <label className="block text-xs text-stone-400 mb-1">Foto de la Tela</label>
+               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+             </div>
+
+             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
            </form>
         )}
 
@@ -1486,8 +1591,13 @@ export default function App() {
              <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="foto" placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Avío</button>
+             
+             <div className="mb-4">
+               <label className="block text-xs text-stone-400 mb-1">Foto del Avío</label>
+               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+             </div>
+
+             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Avío</button>
            </form>
         )}
 
@@ -1499,8 +1609,13 @@ export default function App() {
              <input name="uso" defaultValue={telaSeleccionada.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" defaultValue={telaSeleccionada.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="precio" type="number" min="0" defaultValue={telaSeleccionada.precio || ''} placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="foto" defaultValue={telaSeleccionada.foto} placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+             
+             <div className="mb-4">
+               <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
+               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+             </div>
+
+             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
            </form>
         )}
 
@@ -1511,8 +1626,13 @@ export default function App() {
              <input name="desc" defaultValue={avioSeleccionado.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="uso" defaultValue={avioSeleccionado.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" defaultValue={avioSeleccionado.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="foto" defaultValue={avioSeleccionado.foto} placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+             
+             <div className="mb-4">
+               <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
+               <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
+             </div>
+
+             <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
            </form>
         )}
 
@@ -1717,18 +1837,27 @@ export default function App() {
 
                       <form onSubmit={async (e) => {
                         e.preventDefault();
+                        setIsSaving(true);
                         try {
-                          const url = e.target.nuevaFoto.value;
-                          const fotosActualizadas = [...arrayFotos, url];
-                          const actualizado = { ...p, fotos: fotosActualizadas };
-                          await setDoc(doc(db, "pedidos", String(p.id)), actualizado, { merge: true });
-                          e.target.reset();
-                          mostrarToast("Foto agregada");
+                          const archivoFoto = e.target.nuevaFotoArchivo.files[0];
+                          let url = "";
+                          if (archivoFoto) {
+                            url = await subirACloudinary(archivoFoto);
+                          }
+                          if (url) {
+                            const fotosActualizadas = [...arrayFotos, url];
+                            const actualizado = { ...p, fotos: fotosActualizadas };
+                            await setDoc(doc(db, "pedidos", String(p.id)), actualizado, { merge: true });
+                            e.target.reset();
+                            mostrarToast("Foto agregada");
+                          }
                         } catch (err) {
                           mostrarToast("Error al agregar foto");
+                        } finally {
+                          setIsSaving(false);
                         }
                       }} className="flex flex-col sm:flex-row gap-2 mt-1">
-                        <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs" required />
+                        <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
                         <button type="submit" className="bg-stone-800 px-4 py-2 rounded-xl text-xs border border-stone-700 hover:bg-stone-700 font-medium">Agregar</button>
                       </form>
                     </div>
