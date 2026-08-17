@@ -377,6 +377,8 @@ export default function App() {
 
   const crearPedido = async (e) => {
     e.preventDefault();
+    if (isSaving) return; // Protección contra doble clic
+    setIsSaving(true);
     try {
       const fd = new FormData(e.target);
       const timestamp = Date.now();
@@ -384,7 +386,6 @@ export default function App() {
       const numeroSecuencial = pedidos.length > 0 ? pedidos.length + 1 : 1;
       const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
 
-      // Nombre y teléfono del cliente (si es admin elige, si es cliente toma su perfil y su teléfono ingresado)
       const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
       const telefonoCliente = esAdmin ? '' : fd.get('telefono');
 
@@ -409,7 +410,6 @@ export default function App() {
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
 
-      // Si es cliente y puso un teléfono, verificamos si ya existe en la lista de clientes o lo agregamos
       if (!esAdmin && telefonoCliente) {
         const clienteExistente = clientes.find(c => c.nombre.toLowerCase() === nombreCliente.toLowerCase());
         if (!clienteExistente) {
@@ -427,6 +427,8 @@ export default function App() {
       cambiarVista('dashboard');
     } catch (err) {
       alert("Error al crear pedido: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -737,10 +739,11 @@ export default function App() {
                       onClick={() => { setPedidoSeleccionado(p); cambiarVista('detalle-pedido'); }} 
                       className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
                     >
-                      {esAdmin && (
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
+                      {/* Botón de eliminar habilitado tanto para Admin como para Clientes */}
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (esAdmin) {
                             setModalConfirm({ 
                               isOpen: true, 
                               text: "¿Qué deseas hacer con este pedido?", 
@@ -749,12 +752,18 @@ export default function App() {
                                 { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
                               ]
                             }); 
-                          }} 
-                          className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                        >
-                          ✕
-                        </button>
-                      )}
+                          } else {
+                            setModalConfirm({ 
+                              isOpen: true, 
+                              text: "¿Estás seguro de que quieres eliminar esta solicitud de pedido?", 
+                              action: () => borrarPedidoDefinitivo(p.id) 
+                            });
+                          }
+                        }} 
+                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                      >
+                        ✕
+                      </button>
                       
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
@@ -943,7 +952,10 @@ export default function App() {
 
              <div className="flex gap-3">
                <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
-               <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Enviar Solicitud</button>
+               {/* Botón con protección contra doble clic utilizando isSaving */}
+               <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">
+                 {isSaving ? 'Enviando...' : 'Enviar Solicitud'}
+               </button>
              </div>
            </form>
         )}
