@@ -67,7 +67,6 @@ export default function App() {
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
 
-  // Nuevo estado para manejar el modal de motivo de rechazo en Admin
   const [modalRechazo, setModalRechazo] = useState({ isOpen: false, pedidoId: null, motivo: '' });
 
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
@@ -395,7 +394,7 @@ export default function App() {
       const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
 
       const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
-      const telefonoCliente = esAdmin ? '' : fd.get('telefono');
+      const telefonoCliente = esAdmin ? '' : (fd.get('telefono') || '');
 
       const estadoInicial = esAdmin ? 'Eligiendo telas' : 'Pendiente de Aprobación';
 
@@ -421,9 +420,19 @@ export default function App() {
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
 
-      if (!esAdmin && telefonoCliente) {
-        const clienteExistente = clientes.find(c => c.nombre.toLowerCase() === nombreCliente.toLowerCase());
-        if (!clienteExistente) {
+      // Verificación ampliada de existencia de cliente en base de datos de admin
+      if (!esAdmin) {
+        const nombreBuscado = nombreCliente.toLowerCase();
+        const telefonoBuscado = telefonoCliente.trim();
+
+        // Buscar coincidencias exactas por nombre o por número de teléfono
+        const clienteEncontrado = clientes.find(c => {
+          const coincideNombre = c.nombre && c.nombre.toLowerCase() === nombreBuscado;
+          const coincideTelefono = telefonoBuscado && c.telefono && c.telefono.trim() === telefonoBuscado;
+          return coincideNombre || coincideTelefono;
+        });
+
+        if (!clienteEncontrado) {
           const nuevoClienteId = Date.now();
           const fichaCliente = {
             id: nuevoClienteId,
@@ -498,7 +507,6 @@ export default function App() {
     }
   };
 
-  // Función específica para aceptar solicitud desde la sección de Solicitudes de Admin
   const aceptarSolicitud = async (id) => {
     try {
       const pedido = pedidos.find(p => p.id === id);
@@ -510,7 +518,6 @@ export default function App() {
     }
   };
 
-  // Función para confirmar el rechazo con motivo
   const confirmarRechazoAdmin = async () => {
     if (!modalRechazo.pedidoId) return;
     try {
@@ -573,7 +580,6 @@ export default function App() {
     }
   };
 
-  // Listado de pedidos que van al Dashboard principal (excluye las pendientes de aprobación si es admin, o se muestran en su sección de Solicitudes)
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     
@@ -581,7 +587,6 @@ export default function App() {
       const nombreUsuario = user.displayName || user.email;
       if (p.cliente !== nombreUsuario) return false;
     } else {
-      // En el dashboard principal de admin, no mostramos los que están 'Pendiente de Aprobación' para que vayan a la sección dedicada "Solicitudes"
       if (p.estado === 'Pendiente de Aprobación') return false;
     }
 
@@ -598,7 +603,6 @@ export default function App() {
     return timeB - timeA;
   });
 
-  // Solicitudes pendientes exclusivas para el rol Admin
   const solicitudesPendientesAdmin = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     return p.estado === 'Pendiente de Aprobación';
@@ -878,7 +882,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Nueva sección de Solicitudes para el Rol Admin */}
         {esAdmin && vista === 'solicitudes' && (
           <div>
             <h2 className="text-2xl font-bold mb-6">Solicitudes de Pedidos Pendientes</h2>
@@ -1569,7 +1572,6 @@ export default function App() {
         <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
       )}
 
-      {/* Modal para solicitar motivo de rechazo en Admin */}
       {modalRechazo.isOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
