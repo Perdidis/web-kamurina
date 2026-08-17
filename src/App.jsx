@@ -188,7 +188,21 @@ export default function App() {
 
   const borrarCliente = async (id) => {
     try {
+      // 1. Buscamos el cliente para saber exactamente su nombre
+      const clienteABorrar = clientes.find(c => c.id === id);
+      
+      if (clienteABorrar) {
+        // 2. Filtramos todos los pedidos que tengan el nombre de este cliente
+        const pedidosDelCliente = pedidos.filter(p => p.cliente === clienteABorrar.nombre);
+        
+        // 3. Borramos cada uno de esos pedidos definitivamente de Firebase
+        const promesasDeBorrado = pedidosDelCliente.map(p => deleteDoc(doc(db, "pedidos", String(p.id))));
+        await Promise.all(promesasDeBorrado);
+      }
+
+      // 4. Finalmente, borramos la ficha del cliente
       await deleteDoc(doc(db, "clientes", String(id)));
+      
       if (clienteSeleccionado?.id === id) cambiarVista('clientes');
     } catch (err) {
       alert("Error al eliminar cliente: " + err.message);
@@ -777,13 +791,22 @@ export default function App() {
                ))}
              </div>
              
-             <button 
-               type="submit" 
-               disabled={isSaving} 
-               className={`w-full mt-4 bg-white text-stone-950 py-3 rounded-xl font-bold transition-opacity ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-             >
-               {isSaving ? 'Guardando...' : 'Guardar'}
-             </button>
+             <div className="flex gap-3 mt-4">
+               <button 
+                 type="button" 
+                 onClick={() => cambiarVista('clientes')} 
+                 className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
+               >
+                 Cancelar
+               </button>
+               <button 
+                 type="submit" 
+                 disabled={isSaving} 
+                 className={`w-full bg-white text-stone-950 py-3 rounded-xl font-bold transition-opacity ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+               >
+                 {isSaving ? 'Guardando...' : 'Guardar'}
+               </button>
+             </div>
            </form>
         )}
 
@@ -802,7 +825,16 @@ export default function App() {
                ))}
              </div>
              
-             <button type="submit" className="w-full mt-4 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+             <div className="flex gap-3 mt-4">
+               <button 
+                 type="button" 
+                 onClick={() => cambiarVista('detalle-cliente')} 
+                 className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
+               >
+                 Cancelar
+               </button>
+               <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
+             </div>
            </form>
         )}
 
