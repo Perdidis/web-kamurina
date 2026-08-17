@@ -67,7 +67,6 @@ export default function App() {
 
   const [modalRechazo, setModalRechazo] = useState({ isOpen: false, pedidoId: null, motivo: '' });
   
-  // Estado para controlar qué tarjeta de pedido está editando su estado libremente
   const [editandoEstadoId, setEditandoEstadoId] = useState(null);
   const [nuevoEstadoTexto, setNuevoEstadoTexto] = useState('');
 
@@ -436,13 +435,21 @@ export default function App() {
 
         if (!clienteEncontrado) {
           const nuevoClienteId = Date.now();
+          const medidasVacias = {};
+          MEDIDAS_LISTA.forEach(m => medidasVacias[m] = '');
           const fichaCliente = {
             id: nuevoClienteId,
             nombre: nombreCliente,
             telefono: telefonoCliente,
-            medidas: {}
+            medidas: medidasVacias
           };
           await setDoc(doc(db, "clientes", String(nuevoClienteId)), fichaCliente);
+        } else if (!clienteEncontrado.telefono && telefonoBuscado) {
+          const clienteActualizado = {
+            ...clienteEncontrado,
+            telefono: telefonoBuscado
+          };
+          await setDoc(doc(db, "clientes", String(clienteEncontrado.id)), clienteActualizado);
         }
       }
 
@@ -834,7 +841,6 @@ export default function App() {
                       <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
                       {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
 
-                      {/* Estado del pedido personalizable con lápiz para el Admin */}
                       {esAdmin ? (
                         <div onClick={(e) => e.stopPropagation()} className="mb-2">
                           {editandoEstadoId === p.id ? (
@@ -902,7 +908,6 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Botón de WhatsApp en la tarjeta */}
                       {(() => {
                         const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
                         if (!telefonoContacto) return null;
@@ -1065,7 +1070,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Botón de WhatsApp en la vista de detalle */}
               {(() => {
                 const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
                 if (!telefonoContacto) return null;
@@ -1145,9 +1149,19 @@ export default function App() {
 
              <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
              
-             {!esAdmin && (
-               <input name="telefono" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             )}
+             {!esAdmin && (() => {
+               const nombreActual = user.displayName || user.email;
+               const clienteExistente = clientes.find(c => c.nombre && c.nombre.toLowerCase() === nombreActual.toLowerCase());
+               const tieneTelefonoRegistrado = clienteExistente && clienteExistente.telefono && clienteExistente.telefono.trim() !== '';
+
+               if (tieneTelefonoRegistrado) {
+                 return <input type="hidden" name="telefono" value={clienteExistente.telefono} />;
+               }
+
+               return (
+                 <input name="telefono" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+               );
+             })()}
 
              <div>
                <label className="block text-xs text-stone-400 mb-1">Descripción del pedido (Color, forma, tela...)</label>
