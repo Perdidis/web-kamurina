@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
-// NUEVO: Importaciones de Firebase Authentication
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPlqfkjH85GR5w3YrYb9xGUMREdmCP1Qg",
@@ -18,10 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
-
-// NUEVO: Inicialización de Auth y Google Provider
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
 
 const INITIAL_CLIENTES = [];
 const INITIAL_PEDIDOS = [];
@@ -48,10 +42,6 @@ export default function App() {
   const [loginUser, setLoginUser] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
-  // NUEVOS ESTADOS: Para el login
-  const [isLoginView, setIsLoginView] = useState(true); // Cambia entre Iniciar sesión y Crear cuenta
-  const [authLoading, setAuthLoading] = useState(true); // Para que no parpadee el login si ya hay sesión iniciada
-
   // Estados para búsqueda y filtros del Dashboard
   const [busquedaDashboard, setBusquedaDashboard] = useState('');
   const [filtroEstadoDashboard, setFiltroEstadoDashboard] = useState('TODOS');
@@ -65,7 +55,7 @@ export default function App() {
   // Estado para prevenir doble clic al guardar
   const [isSaving, setIsSaving] = useState(false);
 
-  // Referencia al formulario y estado para detectar si hay cambios sin guardar
+  // NUEVO: Referencia al formulario y estado para detectar si hay cambios sin guardar
   const formRef = useRef(null);
   const [formDirty, setFormDirty] = useState(false);
 
@@ -81,23 +71,15 @@ export default function App() {
 
   const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
-  // NUEVO: Efecto para escuchar si el usuario está logueado o no automáticamente
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-      if (currentUser) {
-        window.history.replaceState({ vista: 'dashboard' }, '');
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
   // Sincronizar el botón "Atrás" físico de Android / navegador con el historial interno de vistas
   useEffect(() => {
     if (!user) return;
     
+    // Al iniciar sesión, aseguramos que la ruta inicial sea el dashboard en el historial
+    window.history.replaceState({ vista: 'dashboard' }, '');
+
     const handlePopState = (event) => {
+      // Si hay un modal abierto, lo cerramos primero en lugar de cambiar de vista
       if (fotoAmpliada) {
         setFotoAmpliada(null);
         window.history.pushState({ vista }, '');
@@ -116,8 +98,9 @@ export default function App() {
 
       const targetVista = event.state?.vista || 'dashboard';
 
+      // NUEVO: Interceptar botón atrás si estamos editando clientes y hay cambios sin guardar
       if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
-        window.history.pushState({ vista }, ''); // Revertimos el historial
+        window.history.pushState({ vista }, ''); // Revertimos el historial para no salir de la app
         setModalConfirm({
           isOpen: true,
           text: "⚠️ Tienes información sin guardar. ¿Qué deseas hacer?",
@@ -129,19 +112,23 @@ export default function App() {
         return;
       }
 
+      // Si el historial del navegador trae una vista guardada, la restauramos
       if (event.state && event.state.vista) {
         setVista(event.state.vista);
       } else {
+        // Por defecto si no hay estado, vamos al dashboard
         setVista('dashboard');
       }
-      setFormDirty(false);
+      setFormDirty(false); // Limpiamos la alerta al navegar normalmente
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [user, fotoAmpliada, modalConfirm.isOpen, menuAbierto, vista, formDirty]);
 
+  // Función segura para cambiar de vista registrando el historial de navegación
   const cambiarVista = (nuevaVista) => {
+    // NUEVO: Proteger cambio de vista por botones internos
     if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
       setModalConfirm({
         isOpen: true,
@@ -157,7 +144,7 @@ export default function App() {
     window.history.pushState({ vista: nuevaVista }, '');
     setVista(nuevaVista);
     setMenuAbierto(false);
-    setFormDirty(false);
+    setFormDirty(false); // Limpiamos la alerta
   };
 
   useEffect(() => {
@@ -201,13 +188,21 @@ export default function App() {
 
   const borrarCliente = async (id) => {
     try {
+      // 1. Buscamos el cliente para saber exactamente su nombre
       const clienteABorrar = clientes.find(c => c.id === id);
+      
       if (clienteABorrar) {
+        // 2. Filtramos todos los pedidos que tengan el nombre de este cliente
         const pedidosDelCliente = pedidos.filter(p => p.cliente === clienteABorrar.nombre);
+        
+        // 3. Borramos cada uno de esos pedidos definitivamente de Firebase
         const promesasDeBorrado = pedidosDelCliente.map(p => deleteDoc(doc(db, "pedidos", String(p.id))));
         await Promise.all(promesasDeBorrado);
       }
+
+      // 4. Finalmente, borramos la ficha del cliente
       await deleteDoc(doc(db, "clientes", String(id)));
+      
       if (clienteSeleccionado?.id === id) cambiarVista('clientes');
     } catch (err) {
       alert("Error al eliminar cliente: " + err.message);
@@ -266,7 +261,7 @@ export default function App() {
       const nuevo = { id, nombre: fd.get('nombre'), telefono: fd.get('telefono'), medidas };
       await setDoc(doc(db, "clientes", String(id)), nuevo);
       
-      setFormDirty(false);
+      setFormDirty(false); // Reseteamos el aviso
       cambiarVista('clientes');
     } catch (err) {
       alert("Error al guardar cliente: " + err.message);
@@ -285,7 +280,7 @@ export default function App() {
       await setDoc(doc(db, "clientes", String(clienteSeleccionado.id)), actualizado);
       setClienteSeleccionado(actualizado);
       
-      setFormDirty(false);
+      setFormDirty(false); // Reseteamos el aviso
       cambiarVista('detalle-cliente');
     } catch (err) {
       alert("Error al actualizar cliente: " + err.message);
@@ -466,41 +461,17 @@ export default function App() {
     }
   };
 
-  // NUEVO: Funciones de Login y Registro Real con Firebase
-  const handleEmailAuth = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    setError('');
-    try {
-      if (isLoginView) {
-        await signInWithEmailAndPassword(auth, loginUser, loginPass);
-      } else {
-        await createUserWithEmailAndPassword(auth, loginUser, loginPass);
-      }
-    } catch (err) {
-      if (err.code === 'auth/invalid-credential') setError('Correo o contraseña incorrectos');
-      else if (err.code === 'auth/email-already-in-use') setError('El correo ya está registrado');
-      else if (err.code === 'auth/weak-password') setError('La contraseña debe tener al menos 6 caracteres');
-      else setError(err.message);
+    if (loginUser.trim() === import.meta.env.VITE_APP_USER && loginPass === import.meta.env.VITE_APP_PASS) {
+        setUser({ uid: 'Kamurina' });
+        window.history.replaceState({ vista: 'dashboard' }, '');
+    } else {
+        setError('Usuario o contraseña incorrectos');
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error("Error al salir:", err);
-    }
-  };
-
+  // Pedidos filtrados para el Dashboard (Aplica estado y búsqueda)
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
@@ -516,6 +487,7 @@ export default function App() {
     return timeB - timeA;
   });
 
+  // Pedidos disponibles para la Calculadora (Sin filtros de estado/búsqueda, solo ignora los ocultos)
   const pedidosParaCalculadora = pedidos.filter(p => !p.ocultoDashboard).sort((a, b) => {
     const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
     const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
@@ -524,9 +496,10 @@ export default function App() {
 
   const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
+  // Agrupación de ganancias mensuales incluyendo lista de pedidos
   const gananciasPorMes = pedidos.reduce((acc, p) => {
     if (!p.entrega || p.precio <= 0) return acc;
-    const mesAnio = p.entrega.slice(0, 7);
+    const mesAnio = p.entrega.slice(0, 7); // Formato YYYY-MM
     const gastos = p.gastos || 0;
     const gananciaPedido = p.precio > 0 ? (p.precio - gastos) : 0;
     
@@ -540,22 +513,14 @@ export default function App() {
     return acc;
   }, {});
 
-  // Muestra pantalla negra un segundo mientras Firebase verifica si ya estabas logueado
-  if (authLoading) {
-    return <div className="min-h-screen bg-stone-950 flex justify-center items-center text-stone-400">Cargando aplicación...</div>;
-  }
-
-  // NUEVO: Pantalla de Login / Registro actualizada
   if (!user) {
     return (
         <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
             <div className="bg-stone-900/40 p-6 md:p-8 rounded-3xl w-full max-w-sm border border-stone-800 backdrop-blur-xl">
                 <h1 className="text-3xl font-bold mb-8 text-center tracking-tighter">Atelier</h1>
-                
-                <form onSubmit={handleEmailAuth} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                     <input 
-                        type="email"
-                        placeholder="Correo electrónico" 
+                        placeholder="Usuario" 
                         value={loginUser}
                         onChange={(e) => setLoginUser(e.target.value)}
                         className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none focus:border-stone-500 transition-colors" 
@@ -571,40 +536,9 @@ export default function App() {
                     />
                     {error && <p className="text-red-400 text-xs text-center">{error}</p>}
                     <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors">
-                        {isLoginView ? 'Iniciar Sesión' : 'Crear Cuenta'}
+                        Iniciar Sesión
                     </button>
                 </form>
-
-                <div className="mt-6 flex items-center justify-center space-x-2">
-                    <div className="h-px bg-stone-800 w-full"></div>
-                    <span className="text-xs text-stone-500 uppercase tracking-widest">O</span>
-                    <div className="h-px bg-stone-800 w-full"></div>
-                </div>
-
-                <button 
-                    onClick={handleGoogleLogin} 
-                    type="button" 
-                    className="w-full mt-6 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors flex items-center justify-center gap-2"
-                >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    Continuar con Google
-                </button>
-
-                <p className="mt-6 text-center text-xs text-stone-400">
-                    {isLoginView ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
-                    <button 
-                        onClick={() => setIsLoginView(!isLoginView)} 
-                        className="text-white hover:underline font-bold"
-                    >
-                        {isLoginView ? 'Regístrate' : 'Inicia sesión'}
-                    </button>
-                </p>
-
             </div>
         </div>
     );
@@ -614,6 +548,7 @@ export default function App() {
     <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
       <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center" />
 
+      {/* Estilo CSS exclusivo para que al imprimir se vea un PDF/Impresión limpio, sin gastar tinta negra y ordenado */}
       <style>{`
         @media print {
           body * {
@@ -637,6 +572,7 @@ export default function App() {
         }
       `}</style>
 
+      {/* Navegación Responsive */}
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
         <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => cambiarVista('dashboard')}>Atelier</h1>
         <div className="flex gap-4 md:gap-8 text-sm text-stone-400 font-medium overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
@@ -646,13 +582,14 @@ export default function App() {
           <button onClick={() => cambiarVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
           <button onClick={() => cambiarVista('calculadora')} className={`whitespace-nowrap ${vista === 'calculadora' ? 'text-white' : ''}`}>Calculadora</button>
           <button onClick={() => cambiarVista('ganancias')} className={`whitespace-nowrap ${vista === 'ganancias' ? 'text-white' : ''}`}>Ganancias</button>
-          <button onClick={handleLogout} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Salir</button>
+          <button onClick={() => setUser(null)} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Salir</button>
         </div>
       </nav>
 
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
           <div>
+            {/* Buscador y Filtros Rápidos */}
             <div className="mb-6 flex flex-col gap-4">
               <input 
                 type="text" 
@@ -1099,6 +1036,7 @@ export default function App() {
 
         {vista === 'detalle-cliente' && clienteSeleccionado && (
           <>
+            {/* Vista normal dentro de la app */}
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
               <button onClick={() => cambiarVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
               <h2 className="text-3xl font-bold mb-1">{clienteSeleccionado.nombre}</h2>
@@ -1180,6 +1118,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* Plantilla limpia y exclusiva para impresión (PDF / Papel) */}
             <div className="print-ficha-exclusiva hidden">
               <div className="border-b-2 border-black pb-4 mb-6">
                 <h1 className="text-3xl font-bold tracking-tight text-black">ATELIER - FICHA DE CLIENTE</h1>
@@ -1242,6 +1181,7 @@ export default function App() {
               </form>
             </div>
 
+            {/* Resumen de Ganancias */}
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl flex flex-col justify-between">
               <div>
                 <h3 className="text-lg font-semibold mb-4 border-b border-stone-800 pb-2">Resumen de Ganancias</h3>
@@ -1298,6 +1238,7 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Lista de pedidos del mes interactivos */}
                     <div className="space-y-3">
                       {datos.pedidos.map(p => (
                         <div 
@@ -1329,6 +1270,7 @@ export default function App() {
         )}
       </main>
 
+      {/* --- MENU FLOTANTE --- */}
       {menuAbierto && (
         <div className="fixed bottom-24 right-4 md:right-8 z-50 flex flex-col gap-3">
           <button onClick={() => {cambiarVista('nuevo-cliente'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Cliente</button>
@@ -1340,6 +1282,7 @@ export default function App() {
 
       <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
 
+      {/* Modal de Foto Ampliada */}
       {fotoAmpliada && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
@@ -1360,6 +1303,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Modal UI de Confirmación con Soporte para Múltiples Botones */}
       {modalConfirm.isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4">
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
@@ -1380,6 +1324,7 @@ export default function App() {
                     {btn.text}
                   </button>
                 ))}
+                {/* Botón Cancelar (Para quedarse en la pantalla editando) */}
                 <button 
                   onClick={() => setModalConfirm({ isOpen: false, text: '', action: null, buttons: null })} 
                   className="w-full mt-2 text-stone-500 hover:text-white text-sm transition-colors py-2"
