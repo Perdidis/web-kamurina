@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
-// NUEVO: Importaciones de Firebase Authentication
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
@@ -18,8 +17,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
-
-// NUEVO: Inicialización de Auth y Google Provider
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
@@ -48,32 +45,25 @@ export default function App() {
   const [loginUser, setLoginUser] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
-  // NUEVOS ESTADOS: Para el login
-  const [isLoginView, setIsLoginView] = useState(true); // Cambia entre Iniciar sesión y Crear cuenta
-  const [authLoading, setAuthLoading] = useState(true); // Para que no parpadee el login si ya hay sesión iniciada
+  const [isLoginView, setIsLoginView] = useState(true); 
+  const [authLoading, setAuthLoading] = useState(true); 
 
-  // Estados para búsqueda y filtros del Dashboard
   const [busquedaDashboard, setBusquedaDashboard] = useState('');
   const [filtroEstadoDashboard, setFiltroEstadoDashboard] = useState('TODOS');
 
-  // Estados para detalles y edición
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [telaSeleccionada, setTelaSeleccionada] = useState(null);
   const [avioSeleccionado, setAvioSeleccionado] = useState(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   
-  // Estado para prevenir doble clic al guardar
   const [isSaving, setIsSaving] = useState(false);
 
-  // Referencia al formulario y estado para detectar si hay cambios sin guardar
   const formRef = useRef(null);
   const [formDirty, setFormDirty] = useState(false);
 
-  // Estado para la foto ampliada y confirmación UI
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
 
-  // Estados sincronizados con Firebase Firestore
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
   const [pedidos, setPedidos] = useState(INITIAL_PEDIDOS);
   const [telas, setTelas] = useState(INITIAL_TELAS);
@@ -81,7 +71,6 @@ export default function App() {
 
   const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
-  // NUEVO: Efecto para escuchar si el usuario está logueado o no automáticamente
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -93,7 +82,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sincronizar el botón "Atrás" físico de Android / navegador con el historial interno de vistas
   useEffect(() => {
     if (!user) return;
     
@@ -117,7 +105,7 @@ export default function App() {
       const targetVista = event.state?.vista || 'dashboard';
 
       if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
-        window.history.pushState({ vista }, ''); // Revertimos el historial
+        window.history.pushState({ vista }, ''); 
         setModalConfirm({
           isOpen: true,
           text: "⚠️ Tienes información sin guardar. ¿Qué deseas hacer?",
@@ -466,7 +454,6 @@ export default function App() {
     }
   };
 
-  // NUEVO: Funciones de Login y Registro Real con Firebase
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setError('');
@@ -540,17 +527,22 @@ export default function App() {
     return acc;
   }, {});
 
-  // Muestra pantalla negra un segundo mientras Firebase verifica si ya estabas logueado
   if (authLoading) {
     return <div className="min-h-screen bg-stone-950 flex justify-center items-center text-stone-400">Cargando aplicación...</div>;
   }
 
-  // NUEVO: Pantalla de Login / Registro actualizada
   if (!user) {
     return (
         <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
-            <div className="bg-stone-900/40 p-6 md:p-8 rounded-3xl w-full max-w-sm border border-stone-800 backdrop-blur-xl">
-                <h1 className="text-3xl font-bold mb-8 text-center tracking-tighter">Atelier</h1>
+            <div className={`p-6 md:p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl transition-all duration-500 border ${isLoginView ? 'bg-stone-900/40 border-stone-800' : 'bg-stone-900/60 border-stone-600 shadow-2xl shadow-stone-800/50'}`}>
+                
+                {/* Título y Subtítulo Dinámicos */}
+                <h1 className="text-3xl font-bold mb-1 text-center tracking-tighter">
+                  {isLoginView ? 'Atelier' : 'Nueva Cuenta'}
+                </h1>
+                <p className="text-center text-stone-400 text-sm mb-8 transition-opacity">
+                  {isLoginView ? 'Ingresa para continuar' : 'Regístrate para solicitar pedidos'}
+                </p>
                 
                 <form onSubmit={handleEmailAuth} className="space-y-4">
                     <input 
@@ -570,8 +562,13 @@ export default function App() {
                         required 
                     />
                     {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-                    <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors">
-                        {isLoginView ? 'Iniciar Sesión' : 'Crear Cuenta'}
+                    
+                    {/* Botón Dinámico */}
+                    <button 
+                      type="submit" 
+                      className={`w-full py-3 rounded-xl font-bold transition-all duration-300 ${isLoginView ? 'bg-white text-stone-950 hover:bg-stone-200' : 'bg-stone-800 text-white hover:bg-stone-700 border border-stone-600'}`}
+                    >
+                        {isLoginView ? 'Iniciar Sesión' : 'Registrarme'}
                     </button>
                 </form>
 
@@ -584,7 +581,7 @@ export default function App() {
                 <button 
                     onClick={handleGoogleLogin} 
                     type="button" 
-                    className="w-full mt-6 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors flex items-center justify-center gap-2"
+                    className="w-full mt-6 bg-stone-950 text-white py-3 rounded-xl font-bold border border-stone-800 hover:bg-stone-900 transition-colors flex items-center justify-center gap-2"
                 >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -595,13 +592,13 @@ export default function App() {
                     Continuar con Google
                 </button>
 
-                <p className="mt-6 text-center text-xs text-stone-400">
+                <p className="mt-6 text-center text-sm text-stone-400">
                     {isLoginView ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
                     <button 
                         onClick={() => setIsLoginView(!isLoginView)} 
-                        className="text-white hover:underline font-bold"
+                        className="text-white hover:underline font-bold transition-colors"
                     >
-                        {isLoginView ? 'Regístrate' : 'Inicia sesión'}
+                        {isLoginView ? 'Regístrate aquí' : 'Inicia sesión'}
                     </button>
                 </p>
 
