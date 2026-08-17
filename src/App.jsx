@@ -321,7 +321,6 @@ export default function App() {
       return;
     }
     
-    // Limpiamos el estado dirty inmediatamente para evitar que salte el modal de confirmación
     setFormDirty(false);
     setIsSaving(true);
     
@@ -350,7 +349,6 @@ export default function App() {
       return;
     }
     
-    // Limpiamos el estado dirty inmediatamente
     setFormDirty(false);
 
     try {
@@ -944,7 +942,7 @@ export default function App() {
         <div className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-stone-900 border border-stone-700 px-6 py-4 rounded-2xl text-white text-sm font-bold flex items-center gap-3">
             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            Guardando...
+            Subiendo archivos a Cloudinary y guardando...
           </div>
         </div>
       )}
@@ -972,10 +970,39 @@ export default function App() {
         }
       `}</style>
 
-      <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
-        <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => cambiarVista('dashboard')}>
+      <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-6 md:mb-12 gap-4">
+        {/* ENCABEZADO MÓVIL: Atelier + Mini Bloques a la derecha */}
+        <div className="w-full flex md:hidden items-center justify-between gap-2 border-b border-stone-800/80 pb-3">
+          <h1 className="text-xl font-bold tracking-tighter cursor-pointer flex-shrink-0" onClick={() => cambiarVista('dashboard')}>
+            Atelier {esAdmin ? <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Admin</span> : <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Cliente</span>}
+          </h1>
+
+          {esAdmin && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1">
+              <div className="bg-stone-900/80 border border-stone-800 px-2 py-1 rounded-xl flex items-center gap-1.5">
+                <span className="text-[10px] text-stone-400">📦</span>
+                <span className="text-xs font-bold text-white">{totalPedidosActivos}</span>
+              </div>
+              <div className="bg-stone-900/80 border border-stone-800 px-2 py-1 rounded-xl flex items-center gap-1.5">
+                <span className="text-[10px] text-emerald-400">💰</span>
+                <span className="text-xs font-bold text-emerald-400">${ingresosDelMes.toLocaleString()}</span>
+              </div>
+              <div 
+                onClick={() => cambiarVista('solicitudes')}
+                className="bg-stone-900/80 border border-amber-950 px-2 py-1 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="text-[10px] text-amber-400">🔔</span>
+                <span className="text-xs font-bold text-amber-300">{solicitudesPendientesAdmin.length}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ENCABEZADO ESCRITORIO (Oculto en móvil) */}
+        <h1 className="hidden md:block text-2xl font-bold tracking-tighter cursor-pointer self-start" onClick={() => cambiarVista('dashboard')}>
           Atelier {esAdmin ? <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Admin</span> : <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Cliente</span>}
         </h1>
+
         <div className="flex gap-4 md:gap-8 text-sm text-stone-400 font-medium overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
           <button onClick={() => cambiarVista('dashboard')} className={`whitespace-nowrap ${vista === 'dashboard' ? 'text-white' : ''}`}>Mis Pedidos</button>
           
@@ -1004,8 +1031,9 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
           <div>
+            {/* BLOQUES DE ESCRITORIO (Ocultos en móvil ya que ahora van al lado de Atelier) */}
             {esAdmin && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="hidden md:grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-stone-900/60 border border-stone-800 p-5 rounded-3xl flex items-center justify-between backdrop-blur-md">
                   <div>
                     <p className="text-xs text-stone-400 uppercase tracking-wider mb-1">Pedidos Activos</p>
