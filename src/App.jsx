@@ -67,6 +67,8 @@ export default function App() {
   const [vista, setVista] = useState('dashboard');
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [busquedaTelas, setBusquedaTelas] = useState('');
+  const [busquedaAvios, setBusquedaAvios] = useState('');
   const [error, setError] = useState('');
   
   const [loginUser, setLoginUser] = useState('');
@@ -850,6 +852,25 @@ export default function App() {
 
   const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
+  const telasFiltradas = telas.filter(t => {
+    const texto = busquedaTelas.toLowerCase();
+    return (
+      (t.nombre && t.nombre.toLowerCase().includes(texto)) ||
+      (t.descripcion && t.descripcion.toLowerCase().includes(texto)) ||
+      (t.uso && t.uso.toLowerCase().includes(texto)) ||
+      (t.precio && String(t.precio).includes(texto))
+    );
+  });
+
+  const aviosFiltrados = avios.filter(a => {
+    const texto = busquedaAvios.toLowerCase();
+    return (
+      (a.nombre && a.nombre.toLowerCase().includes(texto)) ||
+      (a.descripcion && a.descripcion.toLowerCase().includes(texto)) ||
+      (a.uso && a.uso.toLowerCase().includes(texto))
+    );
+  });
+
   const gananciasPorMes = pedidos.reduce((acc, p) => {
     if (p.precio <= 0) return acc;
     const mesAnio = p.entrega ? p.entrega.slice(0, 7) : new Date(p.createdAt || Date.now()).toISOString().slice(0, 7);
@@ -1252,7 +1273,7 @@ export default function App() {
 
                     <h3 className="text-lg font-semibold">{p.cliente}</h3>
                     <p className="text-stone-300 text-sm mb-2">Prenda: <strong>{p.prenda}</strong></p>
-                     
+                      
                     {p.descripcionDetalle && (
                       <div className="bg-stone-950/60 border border-stone-800 p-3 rounded-xl mb-3 text-xs text-stone-300">
                         <strong className="text-stone-400 block mb-1">Detalles (Color, forma, tela):</strong>
@@ -1289,7 +1310,7 @@ export default function App() {
       {vista === 'detalle-pedido' && pedidoSeleccionado && (() => {
         const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
         const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
-         
+          
         const pagosRealizados = pedidoSeleccionado.pagos || [];
         const totalAbonado = pagosRealizados.reduce((acc, curr) => acc + curr.monto, 0);
         const precioTotal = pedidoSeleccionado.precio || 0;
@@ -1299,7 +1320,7 @@ export default function App() {
         return (
           <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-10 rounded-3xl max-w-3xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
             <button onClick={() => cambiarVista('dashboard')} className="absolute top-6 right-6 text-stone-400 hover:text-white bg-stone-800/50 px-3 py-1.5 rounded-xl text-xs">Volver</button>
-             
+              
             <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
             <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
 
@@ -1308,7 +1329,7 @@ export default function App() {
                 <strong>Solicitud Rechazada.</strong> Motivo: {pedidoSeleccionado.motivoRechazo}
               </div>
             )}
-             
+              
             {esAdmin ? (
               <form onSubmit={async (e) => {
                   e.preventDefault();
@@ -1707,75 +1728,93 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'catalogo' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {telas.length === 0 ? (
-                  <p className="col-span-full text-stone-500 text-center py-10 italic">No existen telas registradas.</p>
-              ) : (
-                  telas.map(t => (
-                    <div key={t.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar esta tela del catálogo?", action: () => borrarTela(t.id) }); 
-                        }} 
-                        className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
-                      >
-                        ✕
-                      </button>
-                      <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }} />
-                      <div className="p-4">
-                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }}>{t.nombre}</h3>
-                        <p className="text-xs text-stone-400">{t.descripcion} - {t.uso}</p>
-                        {t.precio > 0 && <p className="text-xs text-emerald-400 font-semibold mt-1">${t.precio.toLocaleString()} / m</p>}
-                        <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs text-stone-400">Stock:</span>
-                            <input
-                                type="text"
-                                value={t.stock}
-                                onChange={(e) => actualizarStock(t.id, e.target.value)}
-                                className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none"
-                            />
+          <div>
+            <input 
+              type="text" 
+              placeholder="Buscar tela por nombre, descripción, uso o precio..." 
+              className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl mb-6 outline-none text-sm text-white backdrop-blur-md" 
+              value={busquedaTelas}
+              onChange={(e) => setBusquedaTelas(e.target.value)} 
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {telasFiltradas.length === 0 ? (
+                    <p className="col-span-full text-stone-500 text-center py-10 italic">No se encontraron telas con esa búsqueda.</p>
+                ) : (
+                    telasFiltradas.map(t => (
+                      <div key={t.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar esta tela del catálogo?", action: () => borrarTela(t.id) }); 
+                          }} 
+                          className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
+                        >
+                          ✕
+                        </button>
+                        <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }} />
+                        <div className="p-4">
+                          <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }}>{t.nombre}</h3>
+                          <p className="text-xs text-stone-400">{t.descripcion} - {t.uso}</p>
+                          {t.precio > 0 && <p className="text-xs text-emerald-400 font-semibold mt-1">${t.precio.toLocaleString()} / m</p>}
+                          <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-stone-400">Stock:</span>
+                              <input
+                                  type="text"
+                                  value={t.stock}
+                                  onChange={(e) => actualizarStock(t.id, e.target.value)}
+                                  className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none"
+                              />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
-              )}
+                    ))
+                )}
+            </div>
           </div>
         )}
 
         {esAdmin && vista === 'catalogo-avios' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {avios.length === 0 ? (
-                  <p className="col-span-full text-stone-500 text-center py-10 italic">No existen avios registrados.</p>
-              ) : (
-                  avios.map(a => (
-                    <div key={a.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este avío del catálogo?", action: () => borrarAvio(a.id) }); 
-                        }} 
-                        className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
-                      >
-                        ✕
-                      </button>
-                      <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />
-                      <div className="p-4">
-                        <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }}>{a.nombre}</h3>
-                        <p className="text-xs text-stone-400">{a.descripcion} - {a.uso}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs text-stone-400">Stock:</span>
-                            <input
-                                type="text"
-                                value={a.stock}
-                                onChange={(e) => actualizarStockAvio(a.id, e.target.value)}
-                                className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none"
-                            />
+          <div>
+            <input 
+              type="text" 
+              placeholder="Buscar avío por nombre, descripción o uso..." 
+              className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl mb-6 outline-none text-sm text-white backdrop-blur-md" 
+              value={busquedaAvios}
+              onChange={(e) => setBusquedaAvios(e.target.value)} 
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {aviosFiltrados.length === 0 ? (
+                    <p className="col-span-full text-stone-500 text-center py-10 italic">No se encontraron avíos con esa búsqueda.</p>
+                ) : (
+                    aviosFiltrados.map(a => (
+                      <div key={a.id} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-3xl overflow-hidden relative">
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar este avío del catálogo?", action: () => borrarAvio(a.id) }); 
+                          }} 
+                          className="absolute top-2 right-2 text-white bg-black/50 p-2 rounded-full hover:bg-red-900 z-10 text-xs"
+                        >
+                          ✕
+                        </button>
+                        <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />
+                        <div className="p-4">
+                          <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }}>{a.nombre}</h3>
+                          <p className="text-xs text-stone-400">{a.descripcion} - {a.uso}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-stone-400">Stock:</span>
+                              <input
+                                  type="text"
+                                  value={a.stock}
+                                  onChange={(e) => actualizarStockAvio(a.id, e.target.value)}
+                                  className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none"
+                              />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
-              )}
+                    ))
+                )}
+            </div>
           </div>
         )}
 
