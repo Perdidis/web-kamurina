@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -55,6 +55,10 @@ export default function App() {
   // Estado para prevenir doble clic al guardar
   const [isSaving, setIsSaving] = useState(false);
 
+  // NUEVO: Referencia al formulario y estado para detectar si hay cambios sin guardar
+  const formRef = useRef(null);
+  const [formDirty, setFormDirty] = useState(false);
+
   // Estado para la foto ampliada y confirmación UI
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
@@ -92,6 +96,22 @@ export default function App() {
         return;
       }
 
+      const targetVista = event.state?.vista || 'dashboard';
+
+      // NUEVO: Interceptar botón atrás si estamos editando clientes y hay cambios sin guardar
+      if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
+        window.history.pushState({ vista }, ''); // Revertimos el historial para no salir de la app
+        setModalConfirm({
+          isOpen: true,
+          text: "⚠️ Tienes información sin guardar. ¿Qué deseas hacer?",
+          buttons: [
+            { text: "Salir sin guardar", action: () => { setFormDirty(false); window.history.pushState({ vista: targetVista }, ''); setVista(targetVista); }, style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" },
+            { text: "Guardar ahora", action: () => { if(formRef.current) formRef.current.requestSubmit(); }, style: "bg-white text-stone-950 hover:bg-stone-200" }
+          ]
+        });
+        return;
+      }
+
       // Si el historial del navegador trae una vista guardada, la restauramos
       if (event.state && event.state.vista) {
         setVista(event.state.vista);
@@ -99,17 +119,32 @@ export default function App() {
         // Por defecto si no hay estado, vamos al dashboard
         setVista('dashboard');
       }
+      setFormDirty(false); // Limpiamos la alerta al navegar normalmente
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user, fotoAmpliada, modalConfirm.isOpen, menuAbierto, vista]);
+  }, [user, fotoAmpliada, modalConfirm.isOpen, menuAbierto, vista, formDirty]);
 
   // Función segura para cambiar de vista registrando el historial de navegación
   const cambiarVista = (nuevaVista) => {
+    // NUEVO: Proteger cambio de vista por botones internos
+    if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
+      setModalConfirm({
+        isOpen: true,
+        text: "⚠️ Tienes información sin guardar. ¿Qué deseas hacer?",
+        buttons: [
+          { text: "Salir sin guardar", action: () => { setFormDirty(false); window.history.pushState({ vista: nuevaVista }, ''); setVista(nuevaVista); setMenuAbierto(false); }, style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" },
+          { text: "Guardar ahora", action: () => { if(formRef.current) formRef.current.requestSubmit(); }, style: "bg-white text-stone-950 hover:bg-stone-200" }
+        ]
+      });
+      return;
+    }
+
     window.history.pushState({ vista: nuevaVista }, '');
     setVista(nuevaVista);
     setMenuAbierto(false);
+    setFormDirty(false); // Limpiamos la alerta
   };
 
   useEffect(() => {
@@ -211,6 +246,8 @@ export default function App() {
       const id = Date.now();
       const nuevo = { id, nombre: fd.get('nombre'), telefono: fd.get('telefono'), medidas };
       await setDoc(doc(db, "clientes", String(id)), nuevo);
+      
+      setFormDirty(false); // Reseteamos el aviso
       cambiarVista('clientes');
     } catch (err) {
       alert("Error al guardar cliente: " + err.message);
@@ -228,6 +265,8 @@ export default function App() {
       const actualizado = { ...clienteSeleccionado, nombre: fd.get('nombre'), telefono: fd.get('telefono'), medidas };
       await setDoc(doc(db, "clientes", String(clienteSeleccionado.id)), actualizado);
       setClienteSeleccionado(actualizado);
+      
+      setFormDirty(false); // Reseteamos el aviso
       cambiarVista('detalle-cliente');
     } catch (err) {
       alert("Error al actualizar cliente: " + err.message);
@@ -408,7 +447,7 @@ export default function App() {
     }
   };
 
-const handleLogin = (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     if (loginUser.trim() === import.meta.env.VITE_APP_USER && loginPass === import.meta.env.VITE_APP_PASS) {
         setUser({ uid: 'Kamurina' });
@@ -462,7 +501,6 @@ const handleLogin = (e) => {
 
   if (!user) {
     return (
-        /* Agregado translate="no" y className="notranslate" para bloquear el traductor */
         <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
             <div className="bg-stone-900/40 p-6 md:p-8 rounded-3xl w-full max-w-sm border border-stone-800 backdrop-blur-xl">
                 <h1 className="text-3xl font-bold mb-8 text-center tracking-tighter">Atelier</h1>
@@ -493,7 +531,6 @@ const handleLogin = (e) => {
   }
 
   return (
-    /* Agregado translate="no" y className="notranslate" para bloquear el traductor en toda la App */
     <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
       <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center" />
 
@@ -726,7 +763,7 @@ const handleLogin = (e) => {
         })()}
 
         {vista === 'nuevo-cliente' && (
-           <form onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+           <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
              <input name="telefono" placeholder="Teléfono" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -751,7 +788,7 @@ const handleLogin = (e) => {
         )}
 
         {vista === 'editar-cliente' && clienteSeleccionado && (
-           <form onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+           <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Editar Cliente y Medidas</h2>
              <input name="nombre" defaultValue={clienteSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
              <input name="telefono" defaultValue={clienteSeleccionado.telefono} placeholder="Teléfono" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -1238,7 +1275,7 @@ const handleLogin = (e) => {
       {modalConfirm.isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4">
           <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
-            <h3 className="text-xl font-bold mb-4 text-white">Confirmar Acción</h3>
+            <h3 className="text-xl font-bold mb-4 text-white">Atención</h3>
             <p className="text-stone-400 text-sm mb-8">{modalConfirm.text}</p>
             
             {modalConfirm.buttons ? (
@@ -1255,6 +1292,7 @@ const handleLogin = (e) => {
                     {btn.text}
                   </button>
                 ))}
+                {/* Botón Cancelar (Para quedarse en la pantalla editando) */}
                 <button 
                   onClick={() => setModalConfirm({ isOpen: false, text: '', action: null, buttons: null })} 
                   className="w-full mt-2 text-stone-500 hover:text-white text-sm transition-colors py-2"
