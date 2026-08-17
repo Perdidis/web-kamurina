@@ -1018,13 +1018,11 @@ export default function App() {
                               onChange={(e) => actualizarEstado(p.id, e.target.value)}
                               className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
                             >
-                              <option value="Pendiente de Aprobación">Pendiente de Aprobación</option>
                               <option value="Eligiendo telas">Eligiendo telas</option>
                               <option value="En confección / Pruebas">En confección / Pruebas</option>
                               <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
                               <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
                               <option value="Entregado con éxito">Entregado con éxito</option>
-                              <option value="Rechazado">Rechazado</option>
                             </select>
                           </div>
                         </div>
@@ -1224,13 +1222,11 @@ export default function App() {
                         <div className="col-span-1 sm:col-span-2">
                             <label className="text-stone-500 pl-1 text-xs">Estado Logístico / Confección</label>
                             <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none font-bold text-white" required>
-                                <option value="Pendiente de Aprobación">Pendiente de Aprobación</option>
                                 <option value="Eligiendo telas">Eligiendo telas</option>
                                 <option value="En confección / Pruebas">En confección / Pruebas</option>
                                 <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
                                 <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
                                 <option value="Entregado con éxito">Entregado con éxito</option>
-                                <option value="Rechazado">Rechazado</option>
                             </select>
                         </div>
                     </div>
