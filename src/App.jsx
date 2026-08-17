@@ -33,8 +33,6 @@ const MEDIDAS_LISTA = [
   'Altura Tiro de Pantalón', 'Largo de Pantalón', 'Largo de Falda', 'Altura de Rodilla'
 ];
 
-const ESTADOS_PEDIDO = ['Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 'Finalizado'];
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [esAdmin, setEsAdmin] = useState(false);
@@ -68,6 +66,10 @@ export default function App() {
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
 
   const [modalRechazo, setModalRechazo] = useState({ isOpen: false, pedidoId: null, motivo: '' });
+  
+  // Estado para controlar qué tarjeta de pedido está editando su estado libremente
+  const [editandoEstadoId, setEditandoEstadoId] = useState(null);
+  const [nuevoEstadoTexto, setNuevoEstadoTexto] = useState('');
 
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
   const [pedidos, setPedidos] = useState(INITIAL_PEDIDOS);
@@ -831,7 +833,59 @@ export default function App() {
 
                       <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
                       {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
-                      {!esAdmin && <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>}
+
+                      {/* Estado del pedido personalizable con lápiz para el Admin */}
+                      {esAdmin ? (
+                        <div onClick={(e) => e.stopPropagation()} className="mb-2">
+                          {editandoEstadoId === p.id ? (
+                            <div className="flex gap-1 mt-1">
+                              <input 
+                                type="text"
+                                value={nuevoEstadoTexto}
+                                onChange={(e) => setNuevoEstadoTexto(e.target.value)}
+                                className="w-full bg-stone-950 border border-stone-700 p-1.5 rounded-xl text-xs text-white outline-none"
+                                placeholder="Escribe el estado..."
+                                autoFocus
+                              />
+                              <button 
+                                onClick={async () => {
+                                  if (nuevoEstadoTexto.trim()) {
+                                    await actualizarEstado(p.id, nuevoEstadoTexto.trim());
+                                  }
+                                  setEditandoEstadoId(null);
+                                }}
+                                className="bg-white text-stone-950 px-2.5 rounded-xl text-xs font-bold"
+                              >
+                                ✓
+                              </button>
+                              <button 
+                                onClick={() => setEditandoEstadoId(null)}
+                                className="bg-stone-800 text-stone-400 px-2 rounded-xl text-xs"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
+                              <span className="text-stone-300">Estado: <strong className="text-white">{p.estado}</strong></span>
+                              <button 
+                                onClick={() => {
+                                  setEditandoEstadoId(p.id);
+                                  setNuevoEstadoTexto(p.estado);
+                                }}
+                                className="text-stone-400 hover:text-white p-1 transition-colors"
+                                title="Editar estado"
+                              >
+                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
+                      )}
 
                       {esRechazado && p.motivoRechazo && (
                         <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
@@ -847,23 +901,6 @@ export default function App() {
                           <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
                         )}
                       </div>
-
-                      {esAdmin ? (
-                        <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => {
-                          if (e.target.value === 'Rechazado') {
-                            setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
-                          } else {
-                            actualizarEstado(p.id, e.target.value);
-                          }
-                        }} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
-                          {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                          <option value="Rechazado">Rechazado</option>
-                        </select>
-                      ) : (
-                        <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
-                          Estado del proceso
-                        </div>
-                      )}
 
                       {/* Botón de WhatsApp en la tarjeta */}
                       {(() => {
@@ -1011,14 +1048,7 @@ export default function App() {
                         </div>
                         <div className="col-span-1 sm:col-span-2">
                             <label className="text-stone-500 pl-1 text-xs">Estado</label>
-                            <select name="estado" defaultValue={pedidoSeleccionado.estado} onChange={(e) => {
-                              if (e.target.value === 'Rechazado') {
-                                setModalRechazo({ isOpen: true, pedidoId: pedidoSeleccionado.id, motivo: pedidoSeleccionado.motivoRechazo || '' });
-                              }
-                            }} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
-                                {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                                <option value="Rechazado">Rechazado</option>
-                            </select>
+                            <input name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
                         </div>
                     </div>
                     <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-4 hover:bg-stone-700">Guardar Información</button>
