@@ -14,8 +14,8 @@ const firebaseConfig = {
   measurementId: "G-6TKCHM61D7"
 };
 
-const CLOUDINARY_CLOUD_NAME = "t3cunnct"; // Reemplaza aquí con tu Cloud Name de Cloudinary
-const CLOUDINARY_UPLOAD_PRESET = "atelier_preset"; // Reemplaza aquí con tu preset unsigned
+const CLOUDINARY_CLOUD_NAME = "t3cunnct";
+const CLOUDINARY_UPLOAD_PRESET = "atelier_preset";
 
 const subirACloudinary = async (archivo) => {
   if (!archivo) return "";
@@ -320,7 +320,11 @@ export default function App() {
       mostrarToast("⚠️ El teléfono debe contener solo números (6 a 15 dígitos)");
       return;
     }
+    
+    // Limpiamos el estado dirty inmediatamente para evitar que salte el modal de confirmación
+    setFormDirty(false);
     setIsSaving(true);
+    
     try {
       const medidas = {};
       MEDIDAS_LISTA.forEach(m => medidas[m] = fd.get(m));
@@ -328,7 +332,6 @@ export default function App() {
       const nuevo = { id, nombre: fd.get('nombre'), telefono, medidas };
       await setDoc(doc(db, "clientes", String(id)), nuevo);
       
-      setFormDirty(false);
       mostrarToast("Cliente guardado con éxito");
       cambiarVista('clientes');
     } catch (err) {
@@ -346,6 +349,10 @@ export default function App() {
       mostrarToast("⚠️ El teléfono debe contener solo números (6 a 15 dígitos)");
       return;
     }
+    
+    // Limpiamos el estado dirty inmediatamente
+    setFormDirty(false);
+
     try {
       const medidas = {};
       MEDIDAS_LISTA.forEach(m => medidas[m] = fd.get(m));
@@ -353,7 +360,6 @@ export default function App() {
       await setDoc(doc(db, "clientes", String(clienteSeleccionado.id)), actualizado);
       setClienteSeleccionado(actualizado);
       
-      setFormDirty(false);
       mostrarToast("Cliente actualizado con éxito");
       cambiarVista('detalle-cliente');
     } catch (err) {
