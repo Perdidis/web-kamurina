@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc, query, where, getDocs } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
@@ -74,7 +74,6 @@ export default function App() {
 
   const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
-  // Verificar rol del usuario de manera segura en Firestore
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -385,16 +384,21 @@ export default function App() {
       const numeroSecuencial = pedidos.length > 0 ? pedidos.length + 1 : 1;
       const id = 'PED-' + String(numeroSecuencial).padStart(3, '0');
 
+      // Nombre y teléfono del cliente (si es admin elige, si es cliente toma su perfil y su teléfono ingresado)
+      const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
+      const telefonoCliente = esAdmin ? '' : fd.get('telefono');
+
       const nuevo = { 
           id,
           createdAt: timestamp,
-          cliente: esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email), 
+          cliente: nombreCliente, 
+          telefono: telefonoCliente,
           prenda: fd.get('prenda'), 
           estado: 'Eligiendo telas', 
           entrega: fd.get('fecha') || '', 
           precio: 0, 
           pagado: false, 
-          tela: fd.get('tela'),
+          tela: fd.get('tela') || '',
           foto: fd.get('foto') || '',
           fotos: fd.get('foto') ? [fd.get('foto')] : [],
           ocultoDashboard: false,
@@ -402,7 +406,24 @@ export default function App() {
           manoObraCosto: 0,
           gastos: 0
       };
+
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
+
+      // Si es cliente y puso un teléfono, verificamos si ya existe en la lista de clientes o lo agregamos
+      if (!esAdmin && telefonoCliente) {
+        const clienteExistente = clientes.find(c => c.nombre.toLowerCase() === nombreCliente.toLowerCase());
+        if (!clienteExistente) {
+          const nuevoClienteId = Date.now();
+          const fichaCliente = {
+            id: nuevoClienteId,
+            nombre: nombreCliente,
+            telefono: telefonoCliente,
+            medidas: {}
+          };
+          await setDoc(doc(db, "clientes", String(nuevoClienteId)), fichaCliente);
+        }
+      }
+
       cambiarVista('dashboard');
     } catch (err) {
       alert("Error al crear pedido: " + err.message);
@@ -512,7 +533,6 @@ export default function App() {
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     
-    // Si es cliente, solo ve sus propios pedidos
     if (!esAdmin) {
       const nombreUsuario = user.displayName || user.email;
       if (p.cliente !== nombreUsuario) return false;
@@ -762,7 +782,7 @@ export default function App() {
                         </select>
                       ) : (
                         <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
-                          Entrega estimada: {p.entrega || 'A definir'}
+                          Posible encuentro: {p.entrega || 'A definir'}
                         </div>
                       )}
                     </div>
@@ -809,7 +829,7 @@ export default function App() {
                             <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
                         </div>
                         <div>
-                            <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega</label>
+                            <label className="text-stone-500 pl-1 text-xs">Posible encuentro / toma de medidas</label>
                             <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
                         </div>
                         <div>
@@ -840,7 +860,7 @@ export default function App() {
                 <div className="space-y-4 mb-8 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
                   <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
                   <p><strong>Estado Actual:</strong> <span className="text-white font-bold">{pedidoSeleccionado.estado}</span></p>
-                  <p><strong>Fecha de Entrega:</strong> {pedidoSeleccionado.entrega || 'Pendiente'}</p>
+                  <p><strong>Posible encuentro / toma de medidas:</strong> {pedidoSeleccionado.entrega || 'A definir'}</p>
                   <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
                   <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
                 </div>
@@ -901,7 +921,15 @@ export default function App() {
              )}
 
              <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="fecha" type="date" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+             
+             {!esAdmin && (
+               <input name="telefono" placeholder="Teléfono Móvil (Ej: 3434...)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+             )}
+
+             <div>
+               <label className="block text-xs text-stone-400 mb-1">Posible encuentro / toma de medidas</label>
+               <input name="fecha" type="date" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+             </div>
              
              {esAdmin && (
                <>
@@ -920,7 +948,6 @@ export default function App() {
            </form>
         )}
 
-        {/* VISTAS EXCLUSIVAS DE ADMIN */}
         {esAdmin && vista === 'nuevo-cliente' && (
            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
@@ -1448,7 +1475,7 @@ export default function App() {
                     if (modalConfirm.action) modalConfirm.action();
                     setModalConfirm({ isOpen: false, text: '', action: null, buttons: null });
                   }} 
-                  className="flex1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
+                  className="flex-1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
                 >
                   Eliminar
                 </button>
