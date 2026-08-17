@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
@@ -37,6 +37,9 @@ const ESTADOS_PEDIDO = ['Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [esAdmin, setEsAdmin] = useState(false);
+  const [loadingRol, setLoadingRol] = useState(true);
+
   const [vista, setVista] = useState('dashboard');
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -71,13 +74,31 @@ export default function App() {
 
   const [calc, setCalc] = useState({ cm: 0, costoMetro: 0, avios: 0, horas: 0, valorHora: 0, margen: 0, precioPersonalizado: 0 });
 
+  // Verificar rol del usuario de manera segura en Firestore
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setAuthLoading(false);
       if (currentUser) {
+        setLoadingRol(true);
+        try {
+          const docRef = doc(db, "usuarios_roles", currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().rol === 'admin') {
+            setEsAdmin(true);
+          } else {
+            setEsAdmin(false);
+          }
+        } catch (err) {
+          console.error("Error consultando rol:", err);
+          setEsAdmin(false);
+        }
+        setLoadingRol(false);
         window.history.replaceState({ vista: 'dashboard' }, '');
+      } else {
+        setEsAdmin(false);
+        setLoadingRol(false);
       }
+      setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -367,10 +388,10 @@ export default function App() {
       const nuevo = { 
           id,
           createdAt: timestamp,
-          cliente: fd.get('clienteNombre'), 
+          cliente: esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email), 
           prenda: fd.get('prenda'), 
           estado: 'Eligiendo telas', 
-          entrega: fd.get('fecha'), 
+          entrega: fd.get('fecha') || '', 
           precio: 0, 
           pagado: false, 
           tela: fd.get('tela'),
@@ -490,6 +511,13 @@ export default function App() {
 
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
+    
+    // Si es cliente, solo ve sus propios pedidos
+    if (!esAdmin) {
+      const nombreUsuario = user.displayName || user.email;
+      if (p.cliente !== nombreUsuario) return false;
+    }
+
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
     const textoBusqueda = busquedaDashboard.trim().toLowerCase();
     const coincideBusqueda = !textoBusqueda || 
@@ -527,7 +555,7 @@ export default function App() {
     return acc;
   }, {});
 
-  if (authLoading) {
+  if (authLoading || loadingRol) {
     return <div className="min-h-screen bg-stone-950 flex justify-center items-center text-stone-400">Cargando aplicación...</div>;
   }
 
@@ -536,7 +564,6 @@ export default function App() {
         <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white flex items-center justify-center p-4 md:p-8 font-sans">
             <div className={`p-6 md:p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl transition-all duration-500 border ${isLoginView ? 'bg-stone-900/40 border-stone-800' : 'bg-stone-900/60 border-stone-600 shadow-2xl shadow-stone-800/50'}`}>
                 
-                {/* Título y Subtítulo Dinámicos */}
                 <h1 className="text-3xl font-bold mb-1 text-center tracking-tighter">
                   {isLoginView ? 'Atelier' : 'Nueva Cuenta'}
                 </h1>
@@ -563,7 +590,6 @@ export default function App() {
                     />
                     {error && <p className="text-red-400 text-xs text-center">{error}</p>}
                     
-                    {/* Botón Dinámico */}
                     <button 
                       type="submit" 
                       className={`w-full py-3 rounded-xl font-bold transition-all duration-300 ${isLoginView ? 'bg-white text-stone-950 hover:bg-stone-200' : 'bg-stone-800 text-white hover:bg-stone-700 border border-stone-600'}`}
@@ -635,14 +661,22 @@ export default function App() {
       `}</style>
 
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
-        <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => cambiarVista('dashboard')}>Atelier</h1>
+        <h1 className="text-2xl font-bold tracking-tighter cursor-pointer self-start md:self-auto" onClick={() => cambiarVista('dashboard')}>
+          Atelier {esAdmin ? <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Admin</span> : <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Cliente</span>}
+        </h1>
         <div className="flex gap-4 md:gap-8 text-sm text-stone-400 font-medium overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-          <button onClick={() => cambiarVista('dashboard')} className={`whitespace-nowrap ${vista === 'dashboard' ? 'text-white' : ''}`}>Dashboard</button>
-          <button onClick={() => cambiarVista('clientes')} className={`whitespace-nowrap ${vista === 'clientes' ? 'text-white' : ''}`}>Clientes</button>
-          <button onClick={() => cambiarVista('catalogo')} className={`whitespace-nowrap ${vista === 'catalogo' ? 'text-white' : ''}`}>Catálogo Telas</button>
-          <button onClick={() => cambiarVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
-          <button onClick={() => cambiarVista('calculadora')} className={`whitespace-nowrap ${vista === 'calculadora' ? 'text-white' : ''}`}>Calculadora</button>
-          <button onClick={() => cambiarVista('ganancias')} className={`whitespace-nowrap ${vista === 'ganancias' ? 'text-white' : ''}`}>Ganancias</button>
+          <button onClick={() => cambiarVista('dashboard')} className={`whitespace-nowrap ${vista === 'dashboard' ? 'text-white' : ''}`}>Mis Pedidos</button>
+          
+          {esAdmin && (
+            <>
+              <button onClick={() => cambiarVista('clientes')} className={`whitespace-nowrap ${vista === 'clientes' ? 'text-white' : ''}`}>Clientes</button>
+              <button onClick={() => cambiarVista('catalogo')} className={`whitespace-nowrap ${vista === 'catalogo' ? 'text-white' : ''}`}>Catálogo Telas</button>
+              <button onClick={() => cambiarVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
+              <button onClick={() => cambiarVista('calculadora')} className={`whitespace-nowrap ${vista === 'calculadora' ? 'text-white' : ''}`}>Calculadora</button>
+              <button onClick={() => cambiarVista('ganancias')} className={`whitespace-nowrap ${vista === 'ganancias' ? 'text-white' : ''}`}>Ganancias</button>
+            </>
+          )}
+
           <button onClick={handleLogout} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Salir</button>
         </div>
       </nav>
@@ -650,36 +684,29 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
           <div>
-            <div className="mb-6 flex flex-col gap-4">
-              <input 
-                type="text" 
-                placeholder="Buscar pedido por cliente, prenda o ID..." 
-                value={busquedaDashboard}
-                onChange={(e) => setBusquedaDashboard(e.target.value)}
-                className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl outline-none text-sm text-white backdrop-blur-md" 
-              />
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <button 
-                  onClick={() => setFiltroEstadoDashboard('TODOS')} 
-                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${filtroEstadoDashboard === 'TODOS' ? 'bg-white text-stone-950' : 'bg-stone-900/40 text-stone-400 border border-stone-800'}`}
-                >
-                  Todos
-                </button>
-                {ESTADOS_PEDIDO.map(est => (
-                  <button 
-                    key={est}
-                    onClick={() => setFiltroEstadoDashboard(est)} 
-                    className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${filtroEstadoDashboard === est ? 'bg-white text-stone-950' : 'bg-stone-900/40 text-stone-400 border border-stone-800'}`}
-                  >
-                    {est}
-                  </button>
-                ))}
+            <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="w-full md:w-auto flex-1">
+                <input 
+                  type="text" 
+                  placeholder="Buscar pedido por prenda o ID..." 
+                  value={busquedaDashboard}
+                  onChange={(e) => setBusquedaDashboard(e.target.value)}
+                  className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl outline-none text-sm text-white backdrop-blur-md" 
+                />
               </div>
+              {!esAdmin && (
+                <button 
+                  onClick={() => cambiarVista('nuevo-pedido')}
+                  className="w-full md:w-auto bg-white text-stone-950 px-6 py-4 rounded-2xl font-bold text-sm whitespace-nowrap hover:bg-stone-200 transition-colors"
+                >
+                  + Solicitar Pedido
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {pedidosVisibles.length === 0 ? (
-                <p className="col-span-full text-stone-500 text-center py-10 italic">No se encontraron pedidos activos con esos criterios.</p>
+                <p className="col-span-full text-stone-500 text-center py-10 italic">No tienes pedidos activos registrados.</p>
               ) : (
                 pedidosVisibles.map(p => {
                   const gastos = p.gastos || 0;
@@ -690,42 +717,54 @@ export default function App() {
                       onClick={() => { setPedidoSeleccionado(p); cambiarVista('detalle-pedido'); }} 
                       className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
                     >
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setModalConfirm({ 
-                            isOpen: true, 
-                            text: "¿Qué deseas hacer con este pedido?", 
-                            buttons: [
-                              { text: "Solo quitar del Dashboard", action: () => ocultarPedidoDashboard(p.id), style: "bg-stone-800 text-white hover:bg-stone-700" },
-                              { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
-                            ]
-                          }); 
-                        }} 
-                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                      >
-                        ✕
-                      </button>
+                      {esAdmin && (
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setModalConfirm({ 
+                              isOpen: true, 
+                              text: "¿Qué deseas hacer con este pedido?", 
+                              buttons: [
+                                { text: "Solo quitar del Dashboard", action: () => ocultarPedidoDashboard(p.id), style: "bg-stone-800 text-white hover:bg-stone-700" },
+                                { text: "Eliminar definitivamente (Historial)", action: () => borrarPedidoDefinitivo(p.id), style: "bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40" }
+                              ]
+                            }); 
+                          }} 
+                          className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
-                        <button onClick={(e) => { e.stopPropagation(); togglePago(p.id); }} className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800'}`}>
+                        <span className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300'}`}>
                           {p.pagado ? 'Pagado' : 'Pendiente'}
-                        </button>
+                        </span>
                       </div>
-                      <h3 className="text-lg font-semibold">{p.cliente}</h3>
-                      <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>
+
+                      <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
+                      {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
+                      {!esAdmin && <p className="text-stone-400 text-sm mb-2">Estado: <strong className="text-white">{p.estado}</strong></p>}
+
                       {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
                       
                       <div className="mb-4">
-                        <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio'}</p>
-                        {p.precio > 0 && (
+                        <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Presupuesto a confirmar'}</p>
+                        {esAdmin && p.precio > 0 && (
                           <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
                         )}
                       </div>
 
-                      <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => actualizarEstado(p.id, e.target.value)} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
-                        {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
+                      {esAdmin ? (
+                        <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => actualizarEstado(p.id, e.target.value)} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
+                          {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                        </select>
+                      ) : (
+                        <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
+                          Entrega estimada: {p.entrega || 'A definir'}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -743,61 +782,69 @@ export default function App() {
               <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
               <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
               
-              <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    const fd = new FormData(e.target);
-                    const actualizado = {
-                        ...pedidoSeleccionado,
-                        prenda: fd.get('prenda'),
-                        entrega: fd.get('entrega'),
-                        tela: fd.get('tela'),
-                        precio: Number(fd.get('precio')),
-                        gastos: Number(fd.get('gastos')) || 0,
-                        estado: fd.get('estado')
-                    };
-                    await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
-                    setPedidoSeleccionado(actualizado);
-                    
-                    cambiarVista('dashboard');
-                    
-                  } catch (err) {
-                    alert("Error al actualizar pedido: " + err.message);
-                  }
-              }}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
-                      <div>
-                          <label className="text-stone-500 pl-1 text-xs">Prenda</label>
-                          <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
-                      </div>
-                      <div>
-                          <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega</label>
-                          <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
-                      </div>
-                      <div>
-                          <label className="text-stone-500 pl-1 text-xs">Tela</label>
-                          <select name="tela" defaultValue={pedidoSeleccionado.tela} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
-                              <option value="">Ninguna</option>
-                              {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
-                          </select>
-                      </div>
-                      <div>
-                          <label className="text-stone-500 pl-1 text-xs">Precio ($)</label>
-                          <input name="precio" type="number" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
-                      </div>
-                      <div>
-                          <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
-                          <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
-                      </div>
-                      <div className="col-span-1 sm:col-span-2">
-                          <label className="text-stone-500 pl-1 text-xs">Estado</label>
-                          <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
-                              {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
-                          </select>
-                      </div>
-                  </div>
-                  <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-8 hover:bg-stone-700">Guardar Información</button>
-              </form>
+              {esAdmin ? (
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    try {
+                      const fd = new FormData(e.target);
+                      const actualizado = {
+                          ...pedidoSeleccionado,
+                          prenda: fd.get('prenda'),
+                          entrega: fd.get('entrega'),
+                          tela: fd.get('tela'),
+                          precio: Number(fd.get('precio')),
+                          gastos: Number(fd.get('gastos')) || 0,
+                          estado: fd.get('estado')
+                      };
+                      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+                      setPedidoSeleccionado(actualizado);
+                      cambiarVista('dashboard');
+                    } catch (err) {
+                      alert("Error al actualizar pedido: " + err.message);
+                    }
+                }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Prenda</label>
+                            <input name="prenda" defaultValue={pedidoSeleccionado.prenda} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
+                        </div>
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Fecha de Entrega</label>
+                            <input name="entrega" type="date" defaultValue={pedidoSeleccionado.entrega} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
+                        </div>
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Tela</label>
+                            <select name="tela" defaultValue={pedidoSeleccionado.tela} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
+                                <option value="">Ninguna</option>
+                                {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Precio ($)</label>
+                            <input name="precio" type="number" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-stone-500 pl-1 text-xs">Gastos ($)</label>
+                            <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2">
+                            <label className="text-stone-500 pl-1 text-xs">Estado</label>
+                            <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
+                                {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-8 hover:bg-stone-700">Guardar Información</button>
+                </form>
+              ) : (
+                <div className="space-y-4 mb-8 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
+                  <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
+                  <p><strong>Estado Actual:</strong> <span className="text-white font-bold">{pedidoSeleccionado.estado}</span></p>
+                  <p><strong>Fecha de Entrega:</strong> {pedidoSeleccionado.entrega || 'Pendiente'}</p>
+                  <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
+                  <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
+                </div>
+              )}
 
               <h3 className="text-lg font-semibold mb-4">Fotos del Trabajo</h3>
               {arrayFotos.length === 0 ? (
@@ -816,27 +863,65 @@ export default function App() {
                   </div>
               )}
 
-              <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    const url = e.target.nuevaFoto.value;
-                    const fotosActualizadas = [...arrayFotos, url];
-                    const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
-                    await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
-                    setPedidoSeleccionado(actualizado);
-                    e.target.reset();
-                  } catch (err) {
-                    alert("Error al agregar foto: " + err.message);
-                  }
-              }} className="flex flex-col sm:flex-row gap-2">
-                  <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-3 rounded-xl border border-stone-800 outline-none text-sm" required />
-                  <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
-              </form>
+              {esAdmin && (
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    try {
+                      const url = e.target.nuevaFoto.value;
+                      const fotosActualizadas = [...arrayFotos, url];
+                      const actualizado = { ...pedidoSeleccionado, fotos: fotosActualizadas };
+                      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+                      setPedidoSeleccionado(actualizado);
+                      e.target.reset();
+                    } catch (err) {
+                      alert("Error al agregar foto: " + err.message);
+                    }
+                }} className="flex flex-col sm:flex-row gap-2">
+                    <input name="nuevaFoto" placeholder="URL nueva foto..." className="w-full bg-stone-900/50 p-3 rounded-xl border border-stone-800 outline-none text-sm" required />
+                    <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
+                </form>
+              )}
             </div>
           );
         })()}
 
-        {vista === 'nuevo-cliente' && (
+        {vista === 'nuevo-pedido' && (
+           <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+             <h2 className="text-2xl font-bold mb-6">Solicitar Nuevo Pedido</h2>
+             
+             {esAdmin ? (
+               <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
+                 <option value="">Seleccionar Cliente</option>
+                 {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+               </select>
+             ) : (
+               <div className="mb-4 bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-stone-400">
+                 Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
+               </div>
+             )}
+
+             <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
+             <input name="fecha" type="date" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+             
+             {esAdmin && (
+               <>
+                 <select name="tela" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none">
+                   <option value="">Seleccionar Tela (Opcional)</option>
+                   {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                 </select>
+                 <input name="foto" placeholder="URL Foto del Pedido (Opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+               </>
+             )}
+
+             <div className="flex gap-3">
+               <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
+               <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Enviar Solicitud</button>
+             </div>
+           </form>
+        )}
+
+        {/* VISTAS EXCLUSIVAS DE ADMIN */}
+        {esAdmin && vista === 'nuevo-cliente' && (
            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -852,25 +937,13 @@ export default function App() {
              </div>
              
              <div className="flex gap-3 mt-4">
-               <button 
-                 type="button" 
-                 onClick={() => cambiarVista('clientes')} 
-                 className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
-               >
-                 Cancelar
-               </button>
-               <button 
-                 type="submit" 
-                 disabled={isSaving} 
-                 className={`w-full bg-white text-stone-950 py-3 rounded-xl font-bold transition-opacity ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-               >
-                 {isSaving ? 'Guardando...' : 'Guardar'}
-               </button>
+               <button type="button" onClick={() => cambiarVista('clientes')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
+               <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar</button>
              </div>
            </form>
         )}
 
-        {vista === 'editar-cliente' && clienteSeleccionado && (
+        {esAdmin && vista === 'editar-cliente' && clienteSeleccionado && (
            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Editar Cliente y Medidas</h2>
              <input name="nombre" defaultValue={clienteSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -886,50 +959,26 @@ export default function App() {
              </div>
              
              <div className="flex gap-3 mt-4">
-               <button 
-                 type="button" 
-                 onClick={() => cambiarVista('detalle-cliente')} 
-                 className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700 transition-colors"
-               >
-                 Cancelar
-               </button>
+               <button type="button" onClick={() => cambiarVista('detalle-cliente')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold">Cancelar</button>
                <button type="submit" className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
              </div>
            </form>
         )}
 
-        {vista === 'nuevo-pedido' && (
-           <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
-             <h2 className="text-2xl font-bold mb-6">Nuevo Pedido</h2>
-             <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
-               <option value="">Seleccionar Cliente</option>
-               {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
-             </select>
-             <input name="prenda" placeholder="Prenda" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <input name="fecha" type="date" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-             <select name="tela" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none">
-               <option value="">Seleccionar Tela (Opcional)</option>
-               {telas.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
-             </select>
-             <input name="foto" placeholder="URL Foto del Pedido (Opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Pedido</button>
-           </form>
-        )}
-
-        {vista === 'nueva-tela' && (
+        {esAdmin && vista === 'nueva-tela' && (
            <form onSubmit={guardarTela} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Nueva Tela</h2>
              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
              <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="precio" type="number" placeholder="Precio por metro ($) (Opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+             <input name="precio" type="number" placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="foto" placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
            </form>
         )}
 
-        {vista === 'nuevo-avio' && (
+        {esAdmin && vista === 'nuevo-avio' && (
            <form onSubmit={guardarAvio} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Nuevo Avío</h2>
              <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -941,20 +990,20 @@ export default function App() {
            </form>
         )}
 
-        {vista === 'editar-tela' && telaSeleccionada && (
+        {esAdmin && vista === 'editar-tela' && telaSeleccionada && (
            <form onSubmit={actualizarTelaEditada} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Editar Tela</h2>
              <input name="nombre" defaultValue={telaSeleccionada.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
              <input name="desc" defaultValue={telaSeleccionada.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="uso" defaultValue={telaSeleccionada.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="stock" defaultValue={telaSeleccionada.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-             <input name="precio" type="number" defaultValue={telaSeleccionada.precio || ''} placeholder="Precio por metro ($) (Opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+             <input name="precio" type="number" defaultValue={telaSeleccionada.precio || ''} placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <input name="foto" defaultValue={telaSeleccionada.foto} placeholder="URL Foto" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
              <button type="submit" className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Cambios</button>
            </form>
         )}
 
-        {vista === 'editar-avio' && avioSeleccionado && (
+        {esAdmin && vista === 'editar-avio' && avioSeleccionado && (
            <form onSubmit={actualizarAvioEditado} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
              <h2 className="text-2xl font-bold mb-6">Editar Avío</h2>
              <input name="nombre" defaultValue={avioSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -966,7 +1015,7 @@ export default function App() {
            </form>
         )}
 
-        {vista === 'catalogo' && (
+        {esAdmin && vista === 'catalogo' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {telas.length === 0 ? (
                   <p className="col-span-full text-stone-500 text-center py-10 italic">No existen telas registradas.</p>
@@ -1003,7 +1052,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'catalogo-avios' && (
+        {esAdmin && vista === 'catalogo-avios' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {avios.length === 0 ? (
                   <p className="col-span-full text-stone-500 text-center py-10 italic">No existen avios registrados.</p>
@@ -1039,7 +1088,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'detalle-tela' && telaSeleccionada && (
+        {esAdmin && vista === 'detalle-tela' && telaSeleccionada && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
             <button onClick={() => cambiarVista('catalogo')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
             <img src={telaSeleccionada.foto} alt={telaSeleccionada.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
@@ -1052,7 +1101,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'detalle-avio' && avioSeleccionado && (
+        {esAdmin && vista === 'detalle-avio' && avioSeleccionado && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
             <button onClick={() => cambiarVista('catalogo-avios')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
             <img src={avioSeleccionado.foto} alt={avioSeleccionado.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
@@ -1064,7 +1113,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'clientes' && (
+        {esAdmin && vista === 'clientes' && (
           <div>
             <input type="text" placeholder="Buscar cliente..." className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl mb-6 outline-none" onChange={(e) => setBusqueda(e.target.value)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1094,7 +1143,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'detalle-cliente' && clienteSeleccionado && (
+        {esAdmin && vista === 'detalle-cliente' && clienteSeleccionado && (
           <>
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
               <button onClick={() => cambiarVista('clientes')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
@@ -1198,7 +1247,7 @@ export default function App() {
           </>
         )}
 
-        {vista === 'calculadora' && (
+        {esAdmin && vista === 'calculadora' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl md:col-span-2">
               <h2 className="text-2xl mb-6 font-light">Calculadora (Tela en Centímetros)</h2>
@@ -1269,7 +1318,7 @@ export default function App() {
           </div>
         )}
 
-        {vista === 'ganancias' && (
+        {esAdmin && vista === 'ganancias' && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-3xl mx-auto">
             <h2 className="text-2xl font-bold mb-6">Ganancias Mensuales</h2>
             {Object.keys(gananciasPorMes).length === 0 ? (
@@ -1326,7 +1375,7 @@ export default function App() {
         )}
       </main>
 
-      {menuAbierto && (
+      {esAdmin && menuAbierto && (
         <div className="fixed bottom-24 right-4 md:right-8 z-50 flex flex-col gap-3">
           <button onClick={() => {cambiarVista('nuevo-cliente'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Cliente</button>
           <button onClick={() => {cambiarVista('nuevo-pedido'); setMenuAbierto(false)}} className="bg-stone-800 p-4 rounded-xl text-sm border border-stone-700 hover:bg-stone-700 shadow-lg">Nuevo Pedido</button>
@@ -1335,7 +1384,9 @@ export default function App() {
         </div>
       )}
 
-      <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
+      {esAdmin && (
+        <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
+      )}
 
       {fotoAmpliada && (
         <div 
@@ -1397,7 +1448,7 @@ export default function App() {
                     if (modalConfirm.action) modalConfirm.action();
                     setModalConfirm({ isOpen: false, text: '', action: null, buttons: null });
                   }} 
-                  className="flex-1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
+                  className="flex1 bg-red-950/40 text-red-400 py-3 rounded-xl font-bold border border-red-900/50 hover:bg-red-900/40 transition-colors"
                 >
                   Eliminar
                 </button>
