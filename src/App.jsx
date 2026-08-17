@@ -421,7 +421,7 @@ export default function App() {
           descripcionDetalle: descripcionDetalle,
           precio: 0, 
           pagado: false,
-          pagos: [], // <-- Añadido para el control de pagos por cuotas/adelantos
+          pagos: [], 
           tela: fd.get('tela') || '',
           foto: fd.get('foto') || '',
           fotos: fd.get('foto') ? [fd.get('foto')] : [],
@@ -538,7 +538,6 @@ export default function App() {
     }
   };
 
-  // Función para registrar un pago parcial (Punto 3)
   const registrarPagoParcial = async () => {
     if (!modalPago.pedidoId) return;
     const monto = Number(montoPagoInput);
@@ -578,7 +577,6 @@ export default function App() {
     }
   };
 
-  // Función para eliminar un pago parcial erroneo
   const eliminarPagoParcial = async (pagoId) => {
     if (!pedidoSeleccionado) return;
     try {
@@ -1069,7 +1067,6 @@ export default function App() {
           const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
           const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
           
-          // Cálculo financiero de cuotas / pagos
           const pagosRealizados = pedidoSeleccionado.pagos || [];
           const totalAbonado = pagosRealizados.reduce((acc, curr) => acc + curr.monto, 0);
           const precioTotal = pedidoSeleccionado.precio || 0;
@@ -1077,8 +1074,8 @@ export default function App() {
           const porcentajePagado = precioTotal > 0 ? Math.min(100, Math.round((totalAbonado / precioTotal) * 100)) : 0;
 
           return (
-            <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
-              <button onClick={() => cambiarVista('dashboard')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
+            <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-10 rounded-3xl max-w-3xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
+              <button onClick={() => cambiarVista('dashboard')} className="absolute top-6 right-6 text-stone-400 hover:text-white bg-stone-800/50 px-3 py-1.5 rounded-xl text-xs">Volver</button>
               
               <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
               <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
@@ -1158,40 +1155,40 @@ export default function App() {
                 </div>
               )}
 
-              {/* SECCIÓN PUNTO 3: CONTROL DE PAGOS Y CUOTAS TÁCTIL */}
-              <div className="bg-stone-950/60 border border-stone-800 p-5 rounded-2xl mb-6">
-                <div className="flex justify-between items-center mb-3">
+              {/* SECCIÓN PUNTO 3: CONTROL DE PAGOS Y CUOTAS (Visible en PC y Celu) */}
+              <div className="bg-stone-950/80 border border-stone-800 p-6 rounded-2xl mb-6 shadow-inner">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                   <h3 className="text-base font-bold text-white">Control de Pagos y Adelantos</h3>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${pedidoSeleccionado.pagado ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-amber-950 text-amber-300 border border-amber-900/50'}`}>
-                    {pedidoSeleccionado.pagado ? 'Pagado Total' : `Saldo: $${saldoPendiente.toLocaleString()}`}
+                  <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${pedidoSeleccionado.pagado ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-amber-950 text-amber-300 border border-amber-900/50'}`}>
+                    {pedidoSeleccionado.pagado ? 'Pagado Total' : `Saldo Pendiente: $${saldoPendiente.toLocaleString()}`}
                   </span>
                 </div>
 
                 {/* Barra de progreso */}
-                <div className="w-full bg-stone-900 h-2.5 rounded-full overflow-hidden mb-4 border border-stone-800">
+                <div className="w-full bg-stone-900 h-3 rounded-full overflow-hidden mb-4 border border-stone-800">
                   <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${porcentajePagado}%` }}></div>
                 </div>
 
-                <div className="flex justify-between text-xs text-stone-400 mb-4">
+                <div className="flex justify-between text-xs text-stone-400 mb-5">
                   <span>Abonado: <strong className="text-white">${totalAbonado.toLocaleString()}</strong></span>
                   <span>Total prenda: <strong className="text-white">${precioTotal.toLocaleString()}</strong> ({porcentajePagado}%)</span>
                 </div>
 
                 {/* Lista de pagos parciales */}
                 {pagosRealizados.length > 0 && (
-                  <div className="space-y-2 mb-4">
-                    <p className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Historial de entregas de dinero:</p>
+                  <div className="space-y-2.5 mb-5">
+                    <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold">Historial de entregas de dinero:</p>
                     {pagosRealizados.map((pago) => (
-                      <div key={pago.id} className="flex justify-between items-center bg-stone-900 p-2.5 rounded-xl border border-stone-800 text-xs">
-                        <div>
-                          <span className="font-bold text-emerald-400">${pago.monto.toLocaleString()}</span>
-                          <span className="text-stone-400 ml-2">({pago.metodo})</span>
-                          <span className="text-stone-500 ml-2 text-[10px]">{pago.fecha}</span>
+                      <div key={pago.id} className="flex justify-between items-center bg-stone-900/90 p-3 rounded-xl border border-stone-800 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-emerald-400 text-sm">${pago.monto.toLocaleString()}</span>
+                          <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-[11px]">{pago.metodo}</span>
+                          <span className="text-stone-500 text-[11px]">{pago.fecha}</span>
                         </div>
                         {esAdmin && (
                           <button 
                             onClick={() => eliminarPagoParcial(pago.id)}
-                            className="text-stone-500 hover:text-red-400 px-2 py-1 font-bold text-sm"
+                            className="text-stone-400 hover:text-red-400 p-1 font-bold text-sm"
                             title="Eliminar pago"
                           >
                             ✕
@@ -1202,11 +1199,11 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Botón táctil para agregar nuevo pago (visible para admin) */}
+                {/* Botón táctil para agregar nuevo pago (visible para admin en PC y celu) */}
                 {esAdmin && (
                   <button
                     onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
-                    className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
+                    className="w-full bg-white text-stone-950 py-3.5 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
                   >
                     + Registrar Nuevo Pago / Seña
                   </button>
