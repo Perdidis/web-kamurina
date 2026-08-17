@@ -333,6 +333,17 @@ export default function App() {
     }
   };
 
+  const actualizarPrecioAvio = async (id, nuevoPrecio) => {
+    try {
+      const avio = avios.find(a => a.id === id);
+      if (avio) {
+        await setDoc(doc(db, "avios", String(id)), { ...avio, precio: Number(nuevoPrecio) || 0 }, { merge: true });
+      }
+    } catch (err) {
+      console.error("Error precio avio:", err);
+    }
+  };
+
   const guardarCliente = async (e) => {
     e.preventDefault();
     if (isSaving) return;
@@ -467,8 +478,14 @@ export default function App() {
     e.preventDefault();
     if (isSaving) return;
     setIsSaving(true);
+    const fd = new FormData(e.target);
+    const precio = Number(fd.get('precio'));
+    if (precio < 0) {
+      mostrarToast("⚠️ El precio no puede ser negativo");
+      setIsSaving(false);
+      return;
+    }
     try {
-      const fd = new FormData(e.target);
       const archivoFoto = fd.get('fotoArchivo');
       let urlFoto = "";
       if (archivoFoto && archivoFoto.size > 0) {
@@ -482,6 +499,7 @@ export default function App() {
         tipo: fd.get('tipo'), 
         centimetros: fd.get('centimetros'), 
         cantidad: fd.get('cantidad'), 
+        precio: precio || 0,
         foto: urlFoto 
       };
       await setDoc(doc(db, "avios", String(id)), nuevo);
@@ -498,8 +516,14 @@ export default function App() {
     e.preventDefault();
     if (isSaving) return;
     setIsSaving(true);
+    const fd = new FormData(e.target);
+    const precio = Number(fd.get('precio'));
+    if (precio < 0) {
+      mostrarToast("⚠️ El precio no puede ser negativo");
+      setIsSaving(false);
+      return;
+    }
     try {
-      const fd = new FormData(e.target);
       const archivoFoto = fd.get('fotoArchivo');
       let urlFoto = avioSeleccionado.foto;
       if (archivoFoto && archivoFoto.size > 0) {
@@ -512,6 +536,7 @@ export default function App() {
         tipo: fd.get('tipo'), 
         centimetros: fd.get('centimetros'), 
         cantidad: fd.get('cantidad'), 
+        precio: precio || 0,
         foto: urlFoto 
       };
       await setDoc(doc(db, "avios", String(avioSeleccionado.id)), actualizado);
@@ -886,7 +911,8 @@ export default function App() {
     const texto = busquedaAvios.toLowerCase();
     return (
       (a.nombre && a.nombre.toLowerCase().includes(texto)) ||
-      (a.tipo && a.tipo.toLowerCase().includes(texto))
+      (a.tipo && a.tipo.toLowerCase().includes(texto)) ||
+      (a.precio && String(a.precio).includes(texto))
     );
   });
 
@@ -1758,6 +1784,7 @@ export default function App() {
 
               <input name="centimetros" placeholder="Centímetros (cm, opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
               <input name="cantidad" placeholder="Cantidad (opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="precio" type="number" min="0" placeholder="Precio ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
                
               <div className="mb-4">
                 <label className="block text-xs text-stone-400 mb-1">Foto del Avío (Opcional)</label>
@@ -1808,6 +1835,7 @@ export default function App() {
 
               <input name="centimetros" defaultValue={avioSeleccionado.centimetros || ''} placeholder="Centímetros (cm, opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
               <input name="cantidad" defaultValue={avioSeleccionado.cantidad || ''} placeholder="Cantidad (opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="precio" type="number" min="0" defaultValue={avioSeleccionado.precio || ''} placeholder="Precio ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
                
               <div className="mb-4">
                 <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
@@ -1868,7 +1896,7 @@ export default function App() {
           <div>
             <input 
               type="text" 
-              placeholder="Buscar avío por nombre o tipo..." 
+              placeholder="Buscar avío por nombre, tipo o precio..." 
               className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl mb-6 outline-none text-sm text-white backdrop-blur-md" 
               value={busquedaAvios}
               onChange={(e) => setBusquedaAvios(e.target.value)} 
@@ -1891,14 +1919,23 @@ export default function App() {
                         {a.foto && <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />}
                         <div className="p-4">
                           <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }}>{a.nombre}</h3>
-                          <p className="text-xs text-stone-400 mb-2">Tipo: {a.tipo || 'N/A'} {a.centimetros ? `- ${a.centimetros} cm` : ''}</p>
+                          <p className="text-xs text-stone-400 mb-1">Tipo: {a.tipo || 'N/A'} {a.centimetros ? `- ${a.centimetros} cm` : ''}</p>
+                          {a.precio > 0 && <p className="text-xs text-emerald-400 font-semibold mb-2">${a.precio.toLocaleString()}</p>}
                           <div className="flex items-center gap-2 mt-2">
-                              <span className="text-xs text-stone-400">Cantidad:</span>
+                              <span className="text-xs text-stone-400">Cant:</span>
                               <input
                                   type="text"
                                   value={a.cantidad || ''}
                                   onChange={(e) => actualizarCantidadAvio(a.id, e.target.value)}
-                                  className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none"
+                                  className="bg-stone-950 p-1 rounded border border-stone-800 w-16 text-xs text-center focus:border-white outline-none"
+                              />
+                              <span className="text-xs text-stone-400 ml-1">Precio:</span>
+                              <input
+                                  type="number"
+                                  min="0"
+                                  value={a.precio !== undefined ? a.precio : ''}
+                                  onChange={(e) => actualizarPrecioAvio(a.id, e.target.value)}
+                                  className="bg-stone-950 p-1 rounded border border-stone-800 w-20 text-xs text-center focus:border-white outline-none text-emerald-400"
                               />
                           </div>
                         </div>
@@ -1929,7 +1966,8 @@ export default function App() {
             <h2 className="text-2xl font-bold mb-2">{avioSeleccionado.nombre}</h2>
             <p className="text-stone-400 text-sm mb-2"><strong>Tipo:</strong> {avioSeleccionado.tipo || 'N/A'}</p>
             <p className="text-stone-400 text-sm mb-2"><strong>Centímetros:</strong> {avioSeleccionado.centimetros || 'N/A'}</p>
-            <p className="text-stone-400 text-sm mb-6"><strong>Cantidad:</strong> {avioSeleccionado.cantidad || 'N/A'}</p>
+            <p className="text-stone-400 text-sm mb-2"><strong>Cantidad:</strong> {avioSeleccionado.cantidad || 'N/A'}</p>
+            <p className="text-stone-400 text-sm mb-6"><strong>Precio:</strong> {avioSeleccionado.precio ? `$${avioSeleccionado.precio.toLocaleString()}` : 'No especificado'}</p>
             <button onClick={() => cambiarVista('editar-avio')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Avío</button>
           </div>
         )}
