@@ -98,6 +98,8 @@ export default function App() {
   const [montoPagoInput, setMontoPagoInput] = useState('');
   const [metodoPagoInput, setMetodoPagoInput] = useState('Efectivo');
 
+  const [modalAlias, setModalAlias] = useState({ isOpen: false, pedido: null });
+
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
   const [pedidos, setPedidos] = useState(INITIAL_PEDIDOS);
   const [telas, setTelas] = useState(INITIAL_TELAS);
@@ -162,6 +164,11 @@ export default function App() {
         window.history.pushState({ vista }, '');
         return;
       }
+      if (modalAlias.isOpen) {
+        setModalAlias({ isOpen: false, pedido: null });
+        window.history.pushState({ vista }, '');
+        return;
+      }
       if (menuAbierto) {
         setMenuAbierto(false);
         window.history.pushState({ vista }, '');
@@ -193,7 +200,7 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user, fotoAmpliada, modalConfirm.isOpen, modalRechazo.isOpen, modalPago.isOpen, menuAbierto, vista, formDirty]);
+  }, [user, fotoAmpliada, modalConfirm.isOpen, modalRechazo.isOpen, modalPago.isOpen, modalAlias.isOpen, menuAbierto, vista, formDirty]);
 
   const cambiarVista = (nuevaVista) => {
     if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
@@ -674,11 +681,21 @@ export default function App() {
       mostrarToast("⚠️ Ingresa un monto válido mayor a 0");
       return;
     }
-    try {
-      const pedido = pedidos.find(p => p.id === modalPago.pedidoId);
-      if (!pedido) return;
 
-      const pagosActuales = pedido.pagos || [];
+    const pedido = pedidos.find(p => p.id === modalPago.pedidoId);
+    if (!pedido) return;
+
+    const pagosActuales = pedido.pagos || [];
+    const totalAbonadoPrevio = pagosActuales.reduce((acc, curr) => acc + curr.monto, 0);
+    const precioTotal = pedido.precio || 0;
+    const saldoPendiente = Math.max(0, precioTotal - totalAbonadoPrevio);
+
+    if (monto > saldoPendiente) {
+      mostrarToast(`⚠️ El monto excede el saldo pendiente ($${saldoPendiente.toLocaleString()})`);
+      return;
+    }
+
+    try {
       const nuevoPago = {
         id: crypto.randomUUID(),
         monto,
@@ -687,7 +704,7 @@ export default function App() {
       };
       const listaActualizada = [...pagosActuales, nuevoPago];
       const totalAbonado = listaActualizada.reduce((acc, curr) => acc + curr.monto, 0);
-      const estaPagado = pedido.precio > 0 && totalAbonado >= pedido.precio;
+      const estaPagado = precioTotal > 0 && totalAbonado >= precioTotal;
 
       const actualizado = {
         ...pedido,
@@ -971,7 +988,6 @@ export default function App() {
       `}</style>
 
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-6 md:mb-12 gap-4">
-        {/* ENCABEZADO MÓVIL: Atelier + Mini Bloques a la derecha */}
         <div className="w-full flex md:hidden items-center justify-between gap-2 border-b border-stone-800/80 pb-3">
           <h1 className="text-xl font-bold tracking-tighter cursor-pointer flex-shrink-0" onClick={() => cambiarVista('dashboard')}>
             Atelier {esAdmin ? <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Admin</span> : <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Cliente</span>}
@@ -998,7 +1014,6 @@ export default function App() {
           )}
         </div>
 
-        {/* ENCABEZADO ESCRITORIO (Oculto en móvil) */}
         <h1 className="hidden md:block text-2xl font-bold tracking-tighter cursor-pointer self-start" onClick={() => cambiarVista('dashboard')}>
           Atelier {esAdmin ? <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Admin</span> : <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Cliente</span>}
         </h1>
@@ -1031,7 +1046,6 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto">
         {vista === 'dashboard' && (
           <div>
-            {/* BLOQUES DE ESCRITORIO (Ocultos en móvil ya que ahora van al lado de Atelier) */}
             {esAdmin && (
               <div className="hidden md:grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-stone-900/60 border border-stone-800 p-5 rounded-3xl flex items-center justify-between backdrop-blur-md">
@@ -1164,7 +1178,7 @@ export default function App() {
                         )}
                       </div>
 
-                      {esAdmin && (
+                      {esAdmin && p.precio > 0 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1173,6 +1187,18 @@ export default function App() {
                           className="mb-3 w-full bg-stone-800 hover:bg-stone-700 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-stone-700"
                         >
                           💳 Registrar Pago
+                        </button>
+                      )}
+
+                      {!esAdmin && p.precio > 0 && !p.pagado && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalAlias({ isOpen: true, pedido: p });
+                          }}
+                          className="mb-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-lg"
+                        >
+                          💳 Pagar (Ver Alias)
                         </button>
                       )}
 
@@ -1359,6 +1385,15 @@ export default function App() {
                   )}
                   <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
                   <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
+                  
+                  {!esAdmin && pedidoSeleccionado.precio > 0 && !pedidoSeleccionado.pagado && (
+                    <button
+                      onClick={() => setModalAlias({ isOpen: true, pedido: pedidoSeleccionado })}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors shadow-lg mt-4"
+                    >
+                      💳 Pagar por Transferencia (Ver Alias)
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -1403,7 +1438,7 @@ export default function App() {
                   </div>
                 )}
 
-                {esAdmin && (
+                {esAdmin && pedidoSeleccionado.precio > 0 && (
                   <button
                     onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
                     className="w-full bg-white text-stone-950 py-3.5 rounded-xl font-bold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
@@ -2069,6 +2104,43 @@ export default function App() {
 
       {esAdmin && (
         <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
+      )}
+
+      {modalAlias.isOpen && modalAlias.pedido && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
+          <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center">
+            <h3 className="text-xl font-bold mb-1 text-white">Datos para Transferencia</h3>
+            <p className="text-stone-400 text-xs mb-6">Realiza el pago con el presupuesto asignado para tu pedido ({modalAlias.pedido.id}).</p>
+            
+            <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800 text-left space-y-3 mb-6">
+              <div>
+                <span className="text-[10px] uppercase text-stone-500 block">Alias de pago:</span>
+                <span className="text-sm font-bold text-emerald-400 select-all">atelier.taller.mp</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-stone-500 block">CVU / CBU:</span>
+                <span className="text-xs font-mono text-stone-200 select-all">0000003100012345678901</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-stone-500 block">Titular:</span>
+                <span className="text-xs text-stone-300">Atelier Confecciones</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-stone-500 block">Monto Total a Pagar:</span>
+                <span className="text-sm font-bold text-white">${modalAlias.pedido.precio.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-stone-400 mb-6 italic">Una vez realizada la transferencia, puedes notificar o enviar el comprobante por WhatsApp al taller.</p>
+
+            <button 
+              onClick={() => setModalAlias({ isOpen: false, pedido: null })}
+              className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold text-xs hover:bg-stone-200 transition-colors"
+            >
+              Entendido / Cerrar
+            </button>
+          </div>
+        </div>
       )}
 
       {modalPago.isOpen && (
