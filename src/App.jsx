@@ -67,6 +67,11 @@ export default function App() {
 
   const [modalRechazo, setModalRechazo] = useState({ isOpen: false, pedidoId: null, motivo: '' });
   
+  // Modal para agregar pago parcial táctil
+  const [modalPago, setModalPago] = useState({ isOpen: false, pedidoId: null });
+  const [montoPagoInput, setMontoPagoInput] = useState('');
+  const [metodoPagoInput, setMetodoPagoInput] = useState('Efectivo');
+  
   const [editandoEstadoId, setEditandoEstadoId] = useState(null);
   const [nuevoEstadoTexto, setNuevoEstadoTexto] = useState('');
 
@@ -124,6 +129,11 @@ export default function App() {
         window.history.pushState({ vista }, '');
         return;
       }
+      if (modalPago.isOpen) {
+        setModalPago({ isOpen: false, pedidoId: null });
+        window.history.pushState({ vista }, '');
+        return;
+      }
       if (menuAbierto) {
         setMenuAbierto(false);
         window.history.pushState({ vista }, '');
@@ -155,7 +165,7 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user, fotoAmpliada, modalConfirm.isOpen, modalRechazo.isOpen, menuAbierto, vista, formDirty]);
+  }, [user, fotoAmpliada, modalConfirm.isOpen, modalRechazo.isOpen, modalPago.isOpen, menuAbierto, vista, formDirty]);
 
   const cambiarVista = (nuevaVista) => {
     if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
@@ -410,7 +420,8 @@ export default function App() {
           entrega: '', 
           descripcionDetalle: descripcionDetalle,
           precio: 0, 
-          pagado: false, 
+          pagado: false,
+          pagos: [], // <-- Añadido para el control de pagos por cuotas/adelantos
           tela: fd.get('tela') || '',
           foto: fd.get('foto') || '',
           fotos: fd.get('foto') ? [fd.get('foto')] : [],
@@ -440,7 +451,7 @@ export default function App() {
           const fichaCliente = {
             id: nuevoClienteId,
             nombre: nombreCliente,
-            telefono: telefonoCliente,
+            telefono: telefonoBuscado,
             medidas: medidasVacias
           };
           await setDoc(doc(db, "clientes", String(nuevoClienteId)), fichaCliente);
@@ -524,6 +535,68 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Función para registrar un pago parcial (Punto 3)
+  const registrarPagoParcial = async () => {
+    if (!modalPago.pedidoId) return;
+    const monto = Number(montoPagoInput);
+    if (!monto || monto <= 0) {
+      alert("Ingresa un monto válido");
+      return;
+    }
+    try {
+      const pedido = pedidos.find(p => p.id === modalPago.pedidoId);
+      if (!pedido) return;
+
+      const pagosActuales = pedido.pagos || [];
+      const nuevoPago = {
+        id: Date.now(),
+        monto,
+        metodo: metodoPagoInput,
+        fecha: new Date().toLocaleDateString()
+      };
+      const listaActualizada = [...pagosActuales, nuevoPago];
+      const totalAbonado = listaActualizada.reduce((acc, curr) => acc + curr.monto, 0);
+      const estaPagado = pedido.precio > 0 && totalAbonado >= pedido.precio;
+
+      const actualizado = {
+        ...pedido,
+        pagos: listaActualizada,
+        pagado: estaPagado
+      };
+
+      await setDoc(doc(db, "pedidos", String(pedido.id)), actualizado, { merge: true });
+      if (pedidoSeleccionado?.id === pedido.id) {
+        setPedidoSeleccionado(actualizado);
+      }
+      setModalPago({ isOpen: false, pedidoId: null });
+      setMontoPagoInput('');
+    } catch (err) {
+      alert("Error al registrar pago: " + err.message);
+    }
+  };
+
+  // Función para eliminar un pago parcial erroneo
+  const eliminarPagoParcial = async (pagoId) => {
+    if (!pedidoSeleccionado) return;
+    try {
+      const pagosActuales = pedidoSeleccionado.pagos || [];
+      const listaActualizada = pagosActuales.filter(p => p.id !== pagoId);
+      const totalAbonado = listaActualizada.reduce((acc, curr) => acc + curr.monto, 0);
+      const estaPagado = pedidoSeleccionado.precio > 0 && totalAbonado >= pedidoSeleccionado.precio;
+
+      const actualizado = {
+        ...pedidoSeleccionado,
+        pagos: listaActualizada,
+        pagado: estaPagado
+      };
+
+      await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
+      setPedidoSeleccionado(actualizado);
+    } catch (err) {
+      alert("Error al eliminar pago: " + err.message);
     }
   };
 
@@ -834,7 +907,7 @@ export default function App() {
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
                         <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
-                          {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente')}
+                          {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente de Pago')}
                         </span>
                       </div>
 
@@ -995,6 +1068,14 @@ export default function App() {
         {vista === 'detalle-pedido' && pedidoSeleccionado && (() => {
           const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
           const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
+          
+          // Cálculo financiero de cuotas / pagos
+          const pagosRealizados = pedidoSeleccionado.pagos || [];
+          const totalAbonado = pagosRealizados.reduce((acc, curr) => acc + curr.monto, 0);
+          const precioTotal = pedidoSeleccionado.precio || 0;
+          const saldoPendiente = Math.max(0, precioTotal - totalAbonado);
+          const porcentajePagado = precioTotal > 0 ? Math.min(100, Math.round((totalAbonado / precioTotal) * 100)) : 0;
+
           return (
             <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
               <button onClick={() => cambiarVista('dashboard')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
@@ -1044,7 +1125,7 @@ export default function App() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-stone-500 pl-1 text-xs">Precio ($)</label>
+                            <label className="text-stone-500 pl-1 text-xs">Precio Total ($)</label>
                             <input name="precio" type="number" defaultValue={pedidoSeleccionado.precio} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
                         </div>
                         <div>
@@ -1052,23 +1133,85 @@ export default function App() {
                             <input name="gastos" type="number" defaultValue={pedidoSeleccionado.gastos !== undefined ? pedidoSeleccionado.gastos : 0} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" />
                         </div>
                         <div className="col-span-1 sm:col-span-2">
-                            <label className="text-stone-500 pl-1 text-xs">Estado</label>
-                            <input name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none" required />
+                            <label className="text-stone-500 pl-1 text-xs">Estado Logístico / Confección (Punto 4)</label>
+                            <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none font-bold text-white" required>
+                                <option value="Pendiente de Aprobación">Pendiente de Aprobación</option>
+                                <option value="Eligiendo telas">Eligiendo telas</option>
+                                <option value="En confección / Pruebas">En confección / Pruebas</option>
+                                <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
+                                <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
+                                <option value="Entregado con éxito">Entregado con éxito</option>
+                                <option value="Rechazado">Rechazado</option>
+                            </select>
                         </div>
                     </div>
-                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-4 hover:bg-stone-700">Guardar Información</button>
+                    <button type="submit" className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold mb-6 hover:bg-stone-700">Guardar Información</button>
                 </form>
               ) : (
-                <div className="space-y-4 mb-4 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
+                <div className="space-y-4 mb-6 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
                   <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
                   {pedidoSeleccionado.descripcionDetalle && (
                     <p><strong>Detalles (Color, forma, tela):</strong> {pedidoSeleccionado.descripcionDetalle}</p>
                   )}
                   <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
                   <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
-                  <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
                 </div>
               )}
+
+              {/* SECCIÓN PUNTO 3: CONTROL DE PAGOS Y CUOTAS TÁCTIL */}
+              <div className="bg-stone-950/60 border border-stone-800 p-5 rounded-2xl mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-base font-bold text-white">Control de Pagos y Adelantos</h3>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${pedidoSeleccionado.pagado ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-amber-950 text-amber-300 border border-amber-900/50'}`}>
+                    {pedidoSeleccionado.pagado ? 'Pagado Total' : `Saldo: $${saldoPendiente.toLocaleString()}`}
+                  </span>
+                </div>
+
+                {/* Barra de progreso */}
+                <div className="w-full bg-stone-900 h-2.5 rounded-full overflow-hidden mb-4 border border-stone-800">
+                  <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${porcentajePagado}%` }}></div>
+                </div>
+
+                <div className="flex justify-between text-xs text-stone-400 mb-4">
+                  <span>Abonado: <strong className="text-white">${totalAbonado.toLocaleString()}</strong></span>
+                  <span>Total prenda: <strong className="text-white">${precioTotal.toLocaleString()}</strong> ({porcentajePagado}%)</span>
+                </div>
+
+                {/* Lista de pagos parciales */}
+                {pagosRealizados.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <p className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Historial de entregas de dinero:</p>
+                    {pagosRealizados.map((pago) => (
+                      <div key={pago.id} className="flex justify-between items-center bg-stone-900 p-2.5 rounded-xl border border-stone-800 text-xs">
+                        <div>
+                          <span className="font-bold text-emerald-400">${pago.monto.toLocaleString()}</span>
+                          <span className="text-stone-400 ml-2">({pago.metodo})</span>
+                          <span className="text-stone-500 ml-2 text-[10px]">{pago.fecha}</span>
+                        </div>
+                        {esAdmin && (
+                          <button 
+                            onClick={() => eliminarPagoParcial(pago.id)}
+                            className="text-stone-500 hover:text-red-400 px-2 py-1 font-bold text-sm"
+                            title="Eliminar pago"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Botón táctil para agregar nuevo pago (visible para admin) */}
+                {esAdmin && (
+                  <button
+                    onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
+                    className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors shadow-lg active:scale-98"
+                  >
+                    + Registrar Nuevo Pago / Seña
+                  </button>
+                )}
+              </div>
 
               {(() => {
                 const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
@@ -1667,6 +1810,58 @@ export default function App() {
 
       {esAdmin && (
         <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
+      )}
+
+      {/* MODAL PARA AGREGAR NUEVO PAGO / SEÑA (PUNTO 3) */}
+      {modalPago.isOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
+          <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-2 text-white">Registrar Pago / Adelanto</h3>
+            <p className="text-stone-400 text-xs mb-4">Ingresa el monto recibido por parte del cliente:</p>
+            
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="text-xs text-stone-500 pl-1">Monto ($)</label>
+                <input 
+                  type="number"
+                  value={montoPagoInput}
+                  onChange={(e) => setMontoPagoInput(e.target.value)}
+                  placeholder="Ej: 15000"
+                  className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-white outline-none"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs text-stone-500 pl-1">Método de pago / Nota</label>
+                <select 
+                  value={metodoPagoInput}
+                  onChange={(e) => setMetodoPagoInput(e.target.value)}
+                  className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-white outline-none"
+                >
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Mercado Pago">Mercado Pago</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setModalPago({ isOpen: false, pedidoId: null })}
+                className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold text-xs hover:bg-stone-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={registrarPagoParcial}
+                className="flex-1 bg-white text-stone-950 py-3 rounded-xl font-bold text-xs hover:bg-stone-200 transition-colors"
+              >
+                Aceptar y Sumar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modalRechazo.isOpen && (
