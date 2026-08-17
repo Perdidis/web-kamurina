@@ -1736,7 +1736,12 @@ export default function App() {
                 <option value="Desmontable">Desmontable</option>
                 <option value="Por metro">Por metro</option>
                 <option value="Ballena">Ballena</option>
-                <option value="Botó">Botón</option>
+                <option value="Botón">Botón</option>
+                <option value="Bies">Bies</option>
+                <option value="Elastico">Elastico</option>
+                <option value="Cintas">Cintas</option>
+                <option value="Hilos">Hilos</option>
+                <option value="Agujas">Agujas</option>
               </select>
 
               <input name="centimetros" placeholder="Centímetros (cm, opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
