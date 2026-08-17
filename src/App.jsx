@@ -33,7 +33,7 @@ const MEDIDAS_LISTA = [
   'Altura Tiro de Pantalón', 'Largo de Pantalón', 'Largo de Falda', 'Altura de Rodilla'
 ];
 
-const ESTADOS_PEDIDO = ['Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 'Finalizado'];
+const ESTADOS_PEDIDO = ['Pendiente de Aprobación', 'Eligiendo telas', 'Midiendo', 'En proceso', 'Pruebas', 'Finalizado'];
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -66,6 +66,9 @@ export default function App() {
 
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, text: '', action: null, buttons: null });
+
+  // Nuevo estado para manejar el modal de motivo de rechazo en Admin
+  const [modalRechazo, setModalRechazo] = useState({ isOpen: false, pedidoId: null, motivo: '' });
 
   const [clientes, setClientes] = useState(INITIAL_CLIENTES);
   const [pedidos, setPedidos] = useState(INITIAL_PEDIDOS);
@@ -116,6 +119,11 @@ export default function App() {
         window.history.pushState({ vista }, '');
         return;
       }
+      if (modalRechazo.isOpen) {
+        setModalRechazo({ isOpen: false, pedidoId: null, motivo: '' });
+        window.history.pushState({ vista }, '');
+        return;
+      }
       if (menuAbierto) {
         setMenuAbierto(false);
         window.history.pushState({ vista }, '');
@@ -147,7 +155,7 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user, fotoAmpliada, modalConfirm.isOpen, menuAbierto, vista, formDirty]);
+  }, [user, fotoAmpliada, modalConfirm.isOpen, modalRechazo.isOpen, menuAbierto, vista, formDirty]);
 
   const cambiarVista = (nuevaVista) => {
     if ((vista === 'nuevo-cliente' || vista === 'editar-cliente') && formDirty) {
@@ -377,7 +385,7 @@ export default function App() {
 
   const crearPedido = async (e) => {
     e.preventDefault();
-    if (isSaving) return; // Protección contra doble clic
+    if (isSaving) return; 
     setIsSaving(true);
     try {
       const fd = new FormData(e.target);
@@ -389,13 +397,15 @@ export default function App() {
       const nombreCliente = esAdmin ? fd.get('clienteNombre') : (user.displayName || user.email);
       const telefonoCliente = esAdmin ? '' : fd.get('telefono');
 
+      const estadoInicial = esAdmin ? 'Eligiendo telas' : 'Pendiente de Aprobación';
+
       const nuevo = { 
           id,
           createdAt: timestamp,
           cliente: nombreCliente, 
           telefono: telefonoCliente,
           prenda: fd.get('prenda'), 
-          estado: 'Eligiendo telas', 
+          estado: estadoInicial, 
           entrega: fd.get('fecha') || '', 
           precio: 0, 
           pagado: false, 
@@ -405,7 +415,8 @@ export default function App() {
           ocultoDashboard: false,
           materialesCosto: 0,
           manoObraCosto: 0,
-          gastos: 0
+          gastos: 0,
+          motivoRechazo: ''
       };
 
       await setDoc(doc(db, "pedidos", String(id)), nuevo);
@@ -477,13 +488,43 @@ export default function App() {
     try {
       const pedido = pedidos.find(p => p.id === id);
       if (pedido) {
-        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, estado: nuevoEstado }, { merge: true });
+        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, estado: nuevoEstado, motivoRechazo: nuevoEstado === 'Rechazado' ? pedido.motivoRechazo : '' }, { merge: true });
         if (pedidoSeleccionado?.id === id) {
           setPedidoSeleccionado(prev => ({ ...prev, estado: nuevoEstado }));
         }
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Función específica para aceptar solicitud desde la sección de Solicitudes de Admin
+  const aceptarSolicitud = async (id) => {
+    try {
+      const pedido = pedidos.find(p => p.id === id);
+      if (pedido) {
+        await setDoc(doc(db, "pedidos", String(id)), { ...pedido, estado: 'Eligiendo telas', motivoRechazo: '' }, { merge: true });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Función para confirmar el rechazo con motivo
+  const confirmarRechazoAdmin = async () => {
+    if (!modalRechazo.pedidoId) return;
+    try {
+      const pedido = pedidos.find(p => p.id === modalRechazo.pedidoId);
+      if (pedido) {
+        await setDoc(doc(db, "pedidos", String(modalRechazo.pedidoId)), { 
+          ...pedido, 
+          estado: 'Rechazado', 
+          motivoRechazo: modalRechazo.motivo 
+        }, { merge: true });
+      }
+      setModalRechazo({ isOpen: false, pedidoId: null, motivo: '' });
+    } catch (err) {
+      alert("Error al rechazar pedido: " + err.message);
     }
   };
 
@@ -532,12 +573,16 @@ export default function App() {
     }
   };
 
+  // Listado de pedidos que van al Dashboard principal (excluye las pendientes de aprobación si es admin, o se muestran en su sección de Solicitudes)
   const pedidosVisibles = pedidos.filter(p => {
     if (p.ocultoDashboard) return false;
     
     if (!esAdmin) {
       const nombreUsuario = user.displayName || user.email;
       if (p.cliente !== nombreUsuario) return false;
+    } else {
+      // En el dashboard principal de admin, no mostramos los que están 'Pendiente de Aprobación' para que vayan a la sección dedicada "Solicitudes"
+      if (p.estado === 'Pendiente de Aprobación') return false;
     }
 
     const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
@@ -547,6 +592,16 @@ export default function App() {
       p.prenda.toLowerCase().includes(textoBusqueda) ||
       p.id.toLowerCase().includes(textoBusqueda);
     return coincideFiltro && coincideBusqueda;
+  }).sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
+    return timeB - timeA;
+  });
+
+  // Solicitudes pendientes exclusivas para el rol Admin
+  const solicitudesPendientesAdmin = pedidos.filter(p => {
+    if (p.ocultoDashboard) return false;
+    return p.estado === 'Pendiente de Aprobación';
   }).sort((a, b) => {
     const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
     const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
@@ -691,6 +746,14 @@ export default function App() {
           
           {esAdmin && (
             <>
+              <button onClick={() => cambiarVista('solicitudes')} className={`whitespace-nowrap relative ${vista === 'solicitudes' ? 'text-white' : ''}`}>
+                Solicitudes
+                {solicitudesPendientesAdmin.length > 0 && (
+                  <span className="absolute -top-2 -right-4 bg-amber-500 text-stone-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                    {solicitudesPendientesAdmin.length}
+                  </span>
+                )}
+              </button>
               <button onClick={() => cambiarVista('clientes')} className={`whitespace-nowrap ${vista === 'clientes' ? 'text-white' : ''}`}>Clientes</button>
               <button onClick={() => cambiarVista('catalogo')} className={`whitespace-nowrap ${vista === 'catalogo' ? 'text-white' : ''}`}>Catálogo Telas</button>
               <button onClick={() => cambiarVista('catalogo-avios')} className={`whitespace-nowrap ${vista === 'catalogo-avios' ? 'text-white' : ''}`}>Catálogo Avios</button>
@@ -733,13 +796,13 @@ export default function App() {
                 pedidosVisibles.map(p => {
                   const gastos = p.gastos || 0;
                   const gananciaPedido = p.precio > 0 ? (p.precio - gastos) : 0;
+                  const esRechazado = p.estado === 'Rechazado';
                   return (
                     <div 
                       key={p.id} 
                       onClick={() => { setPedidoSeleccionado(p); cambiarVista('detalle-pedido'); }} 
-                      className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 rounded-3xl relative cursor-pointer hover:border-stone-600 transition-colors"
+                      className={`bg-stone-900/40 backdrop-blur-md border p-6 rounded-3xl relative cursor-pointer transition-colors ${esRechazado ? 'border-red-900/60 bg-red-950/10' : 'border-stone-800 hover:border-stone-600'}`}
                     >
-                      {/* Botón de eliminar habilitado tanto para Admin como para Clientes */}
                       <button 
                         onClick={(e) => { 
                           e.stopPropagation(); 
@@ -767,14 +830,20 @@ export default function App() {
                       
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
-                        <span className={`text-[10px] uppercase px-2 py-1 rounded ${p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300'}`}>
-                          {p.pagado ? 'Pagado' : 'Pendiente'}
+                        <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
+                          {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente')}
                         </span>
                       </div>
 
                       <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
                       {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
-                      {!esAdmin && <p className="text-stone-400 text-sm mb-2">Estado: <strong className="text-white">{p.estado}</strong></p>}
+                      {!esAdmin && <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>}
+
+                      {esRechazado && p.motivoRechazo && (
+                        <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
+                          <strong>Motivo de rechazo:</strong> {p.motivoRechazo}
+                        </div>
+                      )}
 
                       {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
                       
@@ -786,8 +855,15 @@ export default function App() {
                       </div>
 
                       {esAdmin ? (
-                        <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => actualizarEstado(p.id, e.target.value)} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
+                        <select onClick={(e) => e.stopPropagation()} value={p.estado} onChange={(e) => {
+                          if (e.target.value === 'Rechazado') {
+                            setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
+                          } else {
+                            actualizarEstado(p.id, e.target.value);
+                          }
+                        }} className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs outline-none">
                           {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                          <option value="Rechazado">Rechazado</option>
                         </select>
                       ) : (
                         <div className="w-full bg-stone-950/50 border border-stone-800 p-2 rounded-xl text-xs text-center text-stone-300">
@@ -802,20 +878,76 @@ export default function App() {
           </div>
         )}
 
+        {/* Nueva sección de Solicitudes para el Rol Admin */}
+        {esAdmin && vista === 'solicitudes' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Solicitudes de Pedidos Pendientes</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {solicitudesPendientesAdmin.length === 0 ? (
+                <p className="col-span-full text-stone-500 text-center py-10 italic">No hay nuevas solicitudes de pedidos pendientes de aprobación.</p>
+              ) : (
+                solicitudesPendientesAdmin.map(p => (
+                  <div key={p.id} className="bg-stone-900/40 backdrop-blur-md border border-amber-900/50 p-6 rounded-3xl relative flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
+                        <span className="text-[10px] uppercase px-2 py-1 rounded bg-amber-950 text-amber-300 border border-amber-900/50">
+                          Pendiente de Aprobación
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-semibold">{p.cliente}</h3>
+                      <p className="text-stone-300 text-sm mb-3">Prenda: <strong>{p.prenda}</strong></p>
+                      <p className="text-stone-400 text-xs mb-3">Fecha sugerida de encuentro: {p.entrega || 'No especificada'}</p>
+
+                      {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-4 border border-stone-800" />}
+                    </div>
+
+                    <div className="flex gap-2 mt-4 pt-4 border-t border-stone-800">
+                      <button 
+                        onClick={() => {
+                          setModalRechazo({ isOpen: true, pedidoId: p.id, motivo: '' });
+                        }}
+                        className="flex-1 bg-red-950/40 text-red-400 border border-red-900/50 py-2.5 rounded-xl text-xs font-bold hover:bg-red-900/40 transition-colors"
+                      >
+                        Rechazar
+                      </button>
+                      <button 
+                        onClick={() => aceptarSolicitud(p.id)}
+                        className="flex-1 bg-white text-stone-950 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors"
+                      >
+                        Aceptar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {vista === 'detalle-pedido' && pedidoSeleccionado && (() => {
           const arrayFotos = pedidoSeleccionado.fotos || (pedidoSeleccionado.foto ? [pedidoSeleccionado.foto] : []);
+          const esRechazado = pedidoSeleccionado.estado === 'Rechazado';
           return (
-            <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative">
+            <div className={`bg-stone-900/40 backdrop-blur-md border p-6 md:p-8 rounded-3xl max-w-2xl mx-auto relative ${esRechazado ? 'border-red-900/60' : 'border-stone-800'}`}>
               <button onClick={() => cambiarVista('dashboard')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
               
               <h2 className="text-2xl font-bold mb-1">Detalle del Pedido</h2>
               <p className="text-stone-400 text-sm mb-6">Cliente: {pedidoSeleccionado.cliente}</p>
+
+              {esRechazado && pedidoSeleccionado.motivoRechazo && (
+                <div className="bg-red-950/40 border border-red-900/60 p-4 rounded-2xl mb-6 text-sm text-red-300">
+                  <strong>Solicitud Rechazada.</strong> Motivo: {pedidoSeleccionado.motivoRechazo}
+                </div>
+              )}
               
               {esAdmin ? (
                 <form onSubmit={async (e) => {
                     e.preventDefault();
                     try {
                       const fd = new FormData(e.target);
+                      const nuevoEstado = fd.get('estado');
                       const actualizado = {
                           ...pedidoSeleccionado,
                           prenda: fd.get('prenda'),
@@ -823,7 +955,8 @@ export default function App() {
                           tela: fd.get('tela'),
                           precio: Number(fd.get('precio')),
                           gastos: Number(fd.get('gastos')) || 0,
-                          estado: fd.get('estado')
+                          estado: nuevoEstado,
+                          motivoRechazo: nuevoEstado === 'Rechazado' ? pedidoSeleccionado.motivoRechazo : ''
                       };
                       await setDoc(doc(db, "pedidos", String(pedidoSeleccionado.id)), actualizado, { merge: true });
                       setPedidoSeleccionado(actualizado);
@@ -858,8 +991,13 @@ export default function App() {
                         </div>
                         <div className="col-span-1 sm:col-span-2">
                             <label className="text-stone-500 pl-1 text-xs">Estado</label>
-                            <select name="estado" defaultValue={pedidoSeleccionado.estado} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
+                            <select name="estado" defaultValue={pedidoSeleccionado.estado} onChange={(e) => {
+                              if (e.target.value === 'Rechazado') {
+                                setModalRechazo({ isOpen: true, pedidoId: pedidoSeleccionado.id, motivo: pedidoSeleccionado.motivoRechazo || '' });
+                              }
+                            }} className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 outline-none">
                                 {ESTADOS_PEDIDO.map(e => <option key={e} value={e}>{e}</option>)}
+                                <option value="Rechazado">Rechazado</option>
                             </select>
                         </div>
                     </div>
@@ -868,7 +1006,7 @@ export default function App() {
               ) : (
                 <div className="space-y-4 mb-8 text-sm bg-stone-950/50 p-4 rounded-2xl border border-stone-800">
                   <p><strong>Prenda:</strong> {pedidoSeleccionado.prenda}</p>
-                  <p><strong>Estado Actual:</strong> <span className="text-white font-bold">{pedidoSeleccionado.estado}</span></p>
+                  <p><strong>Estado Actual:</strong> <span className={esRechazado ? "text-red-400 font-bold" : "text-white font-bold"}>{pedidoSeleccionado.estado}</span></p>
                   <p><strong>Posible encuentro / toma de medidas:</strong> {pedidoSeleccionado.entrega || 'A definir'}</p>
                   <p><strong>Precio Total:</strong> {pedidoSeleccionado.precio > 0 ? `$${pedidoSeleccionado.precio.toLocaleString()}` : 'A presupuestar'}</p>
                   <p><strong>Estado de Pago:</strong> {pedidoSeleccionado.pagado ? 'Pagado' : 'Pendiente'}</p>
@@ -952,7 +1090,6 @@ export default function App() {
 
              <div className="flex gap-3">
                <button type="button" onClick={() => cambiarVista('dashboard')} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-700">Cancelar</button>
-               {/* Botón con protección contra doble clic utilizando isSaving */}
                <button type="submit" disabled={isSaving} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">
                  {isSaving ? 'Enviando...' : 'Enviar Solicitud'}
                </button>
@@ -1214,8 +1351,9 @@ export default function App() {
                 ) : (
                   pedidos.filter(p => p.cliente === clienteSeleccionado.nombre).map(p => {
                     const arrayFotos = p.fotos || (p.foto ? [p.foto] : []);
+                    const esRechazado = p.estado === 'Rechazado';
                     return (
-                    <div key={p.id} className="bg-stone-950/40 border border-stone-800 p-4 rounded-2xl flex flex-col gap-3 relative">
+                    <div key={p.id} className={`bg-stone-950/40 border p-4 rounded-2xl flex flex-col gap-3 relative ${esRechazado ? 'border-red-900/50' : 'border-stone-800'}`}>
                       <button 
                         onClick={() => setModalConfirm({ isOpen: true, text: "¿Estás segura de que quieres eliminar definitivamente este pedido?", action: () => borrarPedidoDefinitivo(p.id) })} 
                         className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
@@ -1224,9 +1362,13 @@ export default function App() {
                       </button>
                       
                       <div className="flex justify-between items-center pr-6">
-                        <span className="text-xs font-bold">{p.prenda} ({p.estado})</span>
+                        <span className="text-xs font-bold">{p.prenda} (<span className={esRechazado ? "text-red-400" : ""}>{p.estado}</span>)</span>
                         <span className="text-xs text-stone-400">{p.entrega}</span>
                       </div>
+
+                      {esRechazado && p.motivoRechazo && (
+                        <p className="text-xs text-red-300 bg-red-950/40 p-2 rounded-xl"><strong>Motivo rechazo:</strong> {p.motivoRechazo}</p>
+                      )}
                       
                       <div className="text-sm font-semibold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Sin precio asignado'}</div>
 
@@ -1425,6 +1567,38 @@ export default function App() {
 
       {esAdmin && (
         <button onClick={() => setMenuAbierto(!menuAbierto)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-white text-stone-950 rounded-full text-2xl z-50 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">+</button>
+      )}
+
+      {/* Modal para solicitar motivo de rechazo en Admin */}
+      {modalRechazo.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+          <div className="bg-stone-900 border border-stone-800 p-6 md:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <h3 className="text-xl font-bold mb-2 text-white">Motivo de Rechazo</h3>
+            <p className="text-stone-400 text-xs mb-4">Por favor, indica el motivo por el cual se rechaza este pedido:</p>
+            <textarea 
+              rows="3"
+              value={modalRechazo.motivo}
+              onChange={(e) => setModalRechazo(prev => ({ ...prev, motivo: e.target.value }))}
+              placeholder="Ej: Taller saturado en esa fecha / Tela sin stock..."
+              className="w-full bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-white outline-none mb-6 resize-none"
+              required
+            />
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setModalRechazo({ isOpen: false, pedidoId: null, motivo: '' })}
+                className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold text-xs hover:bg-stone-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmarRechazoAdmin}
+                className="flex-1 bg-red-950 text-red-300 border border-red-900/50 py-3 rounded-xl font-bold text-xs hover:bg-red-900/40 transition-colors"
+              >
+                Confirmar Rechazo
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {fotoAmpliada && (
