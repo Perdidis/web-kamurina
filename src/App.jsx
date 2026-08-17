@@ -52,7 +52,7 @@ const INITIAL_TELAS = [];
 const INITIAL_AVIOS = [];
 
 const MEDIDAS_LISTA = [
-  'Contorno de Busto', 'Altura de Busto', 'Separación de Busto', 'Radio', 
+  'Contorno de Busto', 'Altura de Busto', 'Separación de Busto', 'Radio',  
   'Contorno de Cintura', 'Contorno de Cadera', 'Altura de Cadera',
   'Contorno de Cuello', 'Ancho de Hombros', 'Ancho de Espalda', 'Largo de Espalda', 'Ancho de Pecho',
   'Contorno de Brazo', 'Contorno de Muñeca', 'Largo de Manga', 'Altura de Codo',
@@ -112,6 +112,19 @@ export default function App() {
   const mostrarToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleKeyDownEnter = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, e.target);
+        if (form.elements[index + 1]) {
+          form.elements[index + 1].focus();
+        }
+      }
+    }
   };
 
   useEffect(() => {
@@ -463,7 +476,15 @@ export default function App() {
       }
 
       const id = crypto.randomUUID();
-      const nuevo = { id, nombre: fd.get('nombre'), descripcion: fd.get('desc'), uso: fd.get('uso'), stock: fd.get('stock'), foto: urlFoto };
+      const nuevo = { 
+        id, 
+        nombre: fd.get('nombre'), 
+        tipo: fd.get('tipo'), 
+        centimetros: fd.get('centimetros'), 
+        cantidad: fd.get('cantidad'), 
+        stock: fd.get('stock'), 
+        foto: urlFoto 
+      };
       await setDoc(doc(db, "avios", String(id)), nuevo);
       mostrarToast("Avío guardado con éxito");
       cambiarVista('catalogo-avios');
@@ -489,8 +510,9 @@ export default function App() {
       const actualizado = { 
         ...avioSeleccionado, 
         nombre: fd.get('nombre'), 
-        descripcion: fd.get('desc'), 
-        uso: fd.get('uso'), 
+        tipo: fd.get('tipo'), 
+        centimetros: fd.get('centimetros'), 
+        cantidad: fd.get('cantidad'), 
         stock: fd.get('stock'), 
         foto: urlFoto 
       };
@@ -866,8 +888,7 @@ export default function App() {
     const texto = busquedaAvios.toLowerCase();
     return (
       (a.nombre && a.nombre.toLowerCase().includes(texto)) ||
-      (a.descripcion && a.descripcion.toLowerCase().includes(texto)) ||
-      (a.uso && a.uso.toLowerCase().includes(texto))
+      (a.tipo && a.tipo.toLowerCase().includes(texto))
     );
   });
 
@@ -897,13 +918,13 @@ export default function App() {
             <div className={`p-6 md:p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl transition-all duration-500 border ${isLoginView ? 'bg-stone-900/40 border-stone-800' : 'bg-stone-900/60 border-stone-600 shadow-2xl shadow-stone-800/50'}`}>
                 
                 <h1 className="text-3xl font-bold mb-1 text-center tracking-tighter">
-                  {isLoginView ? 'Atelier' : 'Nueva Cuenta'}
+                  {isLoginView ? 'Atelier Kamurina' : 'Nueva Cuenta'}
                 </h1>
                 <p className="text-center text-stone-400 text-sm mb-8 transition-opacity">
                   {isLoginView ? 'Ingresa para continuar' : 'Regístrate para solicitar pedidos'}
                 </p>
                 
-                <form onSubmit={handleEmailAuth} className="space-y-4">
+                <form onSubmit={handleEmailAuth} onKeyDown={handleKeyDownEnter} className="space-y-4">
                     <input 
                         type="email"
                         placeholder="Correo electrónico" 
@@ -1011,7 +1032,7 @@ export default function App() {
       <nav className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-6 md:mb-12 gap-4">
         <div className="w-full flex md:hidden items-center justify-between gap-2 border-b border-stone-800/80 pb-3">
           <h1 className="text-xl font-bold tracking-tighter cursor-pointer flex-shrink-0" onClick={() => cambiarVista('dashboard')}>
-            Atelier {esAdmin ? <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Admin</span> : <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Cliente</span>}
+            Atelier Kamurina {esAdmin ? <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Admin</span> : <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-full ml-1">Cliente</span>}
           </h1>
 
           {esAdmin && (
@@ -1036,7 +1057,7 @@ export default function App() {
         </div>
 
         <h1 className="hidden md:block text-2xl font-bold tracking-tighter cursor-pointer self-start" onClick={() => cambiarVista('dashboard')}>
-          Atelier {esAdmin ? <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Admin</span> : <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Cliente</span>}
+          Atelier Kamurina {esAdmin ? <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Admin</span> : <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full ml-2">Cliente</span>}
         </h1>
 
         <div className="flex gap-4 md:gap-8 text-sm text-stone-400 font-medium overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
@@ -1147,112 +1168,112 @@ export default function App() {
                               action: () => borrarPedidoDefinitivo(p.id) 
                             });
                           }
-                      }} 
-                      className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
-                    >
-                      ✕
-                    </button>
-                    
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
-                      <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
-                        {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente de Pago')}
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
-                    {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
-
-                    {esAdmin ? (
-                      <div onClick={(e) => e.stopPropagation()} className="mb-2">
-                        <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
-                          <span className="text-stone-300">Estado:</span>
-                          <select
-                            value={p.estado}
-                            onChange={(e) => actualizarEstado(p.id, e.target.value)}
-                            className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
-                          >
-                            <option value="Eligiendo telas">Eligiendo telas</option>
-                            <option value="En confección / Pruebas">En confección / Pruebas</option>
-                            <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
-                            <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
-                            <option value="Entregado con éxito">Entregado con éxito</option>
-                          </select>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
-                    )}
-
-                    {esRechazado && p.motivoRechazo && (
-                      <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
-                        <strong>Motivo de rechazo:</strong> {p.motivoRechazo}
-                      </div>
-                    )}
-
-                    {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
-                    
-                    <div className="mb-4">
-                      <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Presupuesto a confirmar'}</p>
-                      {esAdmin && p.precio > 0 && (
-                        <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
-                      )}
-                    </div>
-
-                    {esAdmin && p.precio > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setModalPago({ isOpen: true, pedidoId: p.id });
-                        }}
-                        className="mb-3 w-full bg-stone-800 hover:bg-stone-700 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-stone-700"
+                        }} 
+                        className="absolute top-4 right-4 text-stone-600 hover:text-red-400 text-xs"
                       >
-                        💳 Registrar Pago
+                        ✕
                       </button>
-                    )}
+                      
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="text-[10px] uppercase tracking-widest text-stone-500">{p.id}</span>
+                        <span className={`text-[10px] uppercase px-2 py-1 rounded ${esRechazado ? 'bg-red-950 text-red-400 border border-red-900/50' : (p.pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-stone-800 text-stone-300')}`}>
+                          {esRechazado ? 'Rechazado' : (p.pagado ? 'Pagado' : 'Pendiente de Pago')}
+                        </span>
+                      </div>
 
-                    {!esAdmin && p.precio > 0 && !p.pagado && (
-                      <button
-                        onClick={(e) => {
+                      <h3 className="text-lg font-semibold">{esAdmin ? p.cliente : p.prenda}</h3>
+                      {esAdmin && <p className="text-stone-400 text-sm mb-2">{p.prenda} {p.tela && `(${p.tela})`}</p>}
+
+                      {esAdmin ? (
+                        <div onClick={(e) => e.stopPropagation()} className="mb-2">
+                          <div className="flex items-center justify-between bg-stone-950/40 border border-stone-800/80 px-3 py-2 rounded-xl text-xs">
+                            <span className="text-stone-300">Estado:</span>
+                            <select
+                              value={p.estado}
+                              onChange={(e) => actualizarEstado(p.id, e.target.value)}
+                              className="bg-stone-950 border border-stone-700 px-2 py-1 rounded-lg text-xs text-white font-bold outline-none cursor-pointer"
+                            >
+                              <option value="Eligiendo telas">Eligiendo telas</option>
+                              <option value="En confección / Pruebas">En confección / Pruebas</option>
+                              <option value="Listo para retirar en el taller">Listo para retirar en el taller</option>
+                              <option value="En camino (Envío a domicilio)">En camino (Envío a domicilio)</option>
+                              <option value="Entregado con éxito">Entregado con éxito</option>
+                            </select>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-stone-400 text-sm mb-2">Estado: <strong className={esRechazado ? "text-red-400" : "text-white"}>{p.estado}</strong></p>
+                      )}
+
+                      {esRechazado && p.motivoRechazo && (
+                        <div className="bg-red-950/30 border border-red-900/40 p-3 rounded-xl mb-3 text-xs text-red-300">
+                          <strong>Motivo de rechazo:</strong> {p.motivoRechazo}
+                        </div>
+                      )}
+
+                      {(p.fotos?.[0] || p.foto) && <img src={p.fotos?.[0] || p.foto} alt="Pedido" className="w-full h-24 object-cover rounded-xl mb-3 border border-stone-800" />}
+                      
+                      <div className="mb-4">
+                        <p className="text-xl font-bold">{p.precio > 0 ? `$${p.precio.toLocaleString()}` : 'Presupuesto a confirmar'}</p>
+                        {esAdmin && p.precio > 0 && (
+                          <p className="text-xs text-emerald-400 font-medium">Ganancia: +${gananciaPedido.toLocaleString()}</p>
+                        )}
+                      </div>
+
+                      {esAdmin && p.precio > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalPago({ isOpen: true, pedidoId: p.id });
+                          }}
+                          className="mb-3 w-full bg-stone-800 hover:bg-stone-700 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-stone-700"
+                        >
+                          💳 Registrar Pago
+                        </button>
+                      )}
+
+                      {!esAdmin && p.precio > 0 && !p.pagado && (
+                        <button
+                          onClick={(e) => {
                             e.stopPropagation();
                             setModalAlias({ isOpen: true, pedido: p });
-                        }}
-                        className="mb-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-lg"
-                      >
-                        💳 Pagar (Ver Alias)
-                      </button>
-                    )}
-
-                    {(() => {
-                      const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
-                      if (!telefonoContacto) return null;
-                      const mensaje = esAdmin 
-                        ? `Hola ${p.cliente}, te escribo desde Atelier por tu pedido de ${p.prenda} para coordinar detalles y fotos.` 
-                        : `Hola, le escribo por mi pedido de ${p.prenda} (${p.id}) en Atelier.`;
-                      const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
-
-                      return (
-                        <a
-                          href={urlWhatsapp}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors"
+                          }}
+                          className="mb-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-lg"
                         >
-                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                          </svg>
-                          {esAdmin ? 'Coordinar por WhatsApp' : 'Contactar por WhatsApp'}
-                        </a>
-                      );
-                    })()}
-                </div>
-                );
-              })
-            )}
-        </div>
-      </div>
-    )}
+                          💳 Pagar (Ver Alias)
+                        </button>
+                      )}
+
+                      {(() => {
+                        const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
+                        if (!telefonoContacto) return null;
+                        const mensaje = esAdmin 
+                          ? `Hola ${p.cliente}, te escribo desde Atelier Kamurina por tu pedido de ${p.prenda} para coordinar detalles y fotos.` 
+                          : `Hola, le escribo por mi pedido de ${p.prenda} (${p.id}) en Atelier Kamurina.`;
+                        const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+
+                        return (
+                          <a
+                            href={urlWhatsapp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-colors"
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                            </svg>
+                            {esAdmin ? 'Coordinar por WhatsApp' : 'Contactar por WhatsApp'}
+                          </a>
+                        );
+                      })()}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         {esAdmin && vista === 'solicitudes' && (
           <div>
@@ -1360,7 +1381,7 @@ export default function App() {
                   } catch (err) {
                     mostrarToast("Error al actualizar pedido");
                   }
-              }}>
+              }} onKeyDown={handleKeyDownEnter}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
                       <div>
                           <label className="text-stone-500 pl-1 text-xs">Prenda</label>
@@ -1459,7 +1480,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* AQUÍ SE APLICÓ LA CORRECCIÓN: Se añadió && pedidoSeleccionado.precio > 0 */}
               {esAdmin && pedidoSeleccionado.precio > 0 && (
                 <button
                   onClick={() => setModalPago({ isOpen: true, pedidoId: pedidoSeleccionado.id })}
@@ -1474,7 +1494,7 @@ export default function App() {
               const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
               if (!telefonoContacto) return null;
               const mensaje = esAdmin 
-                ? `Hola ${pedidoSeleccionado.cliente}, te escribo desde Atelier por tu pedido de ${pedidoSeleccionado.prenda}.` 
+                ? `Hola ${pedidoSeleccionado.cliente}, te escribo desde Atelier Kamurina por tu pedido de ${pedidoSeleccionado.prenda}.` 
                 : `Hola, le escribo por los detalles de mi pedido de ${pedidoSeleccionado.prenda} (${pedidoSeleccionado.id}).`;
               const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
 
@@ -1533,8 +1553,8 @@ export default function App() {
                   } finally {
                     setIsSaving(false);
                   }
-              }} className="flex flex-col sm:flex-row gap-2">
-                  <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2.5 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+              }} onKeyDown={handleKeyDownEnter} className="flex flex-col sm:flex-row gap-2">
+                  <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2.5 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
                   <button type="submit" className="bg-white text-stone-950 px-4 py-3 sm:py-2 rounded-xl text-sm font-bold whitespace-nowrap">Agregar Foto</button>
               </form>
             )}
@@ -1543,17 +1563,17 @@ export default function App() {
       })()}
 
         {vista === 'nuevo-pedido' && (
-            <form onSubmit={crearPedido} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form onSubmit={crearPedido} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">{esAdmin ? 'Crear Nuevo Pedido' : 'Solicitar Nuevo Pedido'}</h2>
                
               {esAdmin ? (
                <select name="clienteNombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required>
-                 <option value="">Seleccionar Cliente</option>
-                 {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                  <option value="">Seleccionar Cliente</option>
+                  {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
                </select>
               ) : (
                <div className="mb-4 bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-stone-400">
-                 Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
+                  Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
                </div>
               )}
 
@@ -1614,7 +1634,7 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'nuevo-cliente' && (
-            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={guardarCliente} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Nuevo Cliente</h2>
               <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
               <input name="telefono" placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -1636,7 +1656,7 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'editar-cliente' && clienteSeleccionado && (
-            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form ref={formRef} onChange={() => setFormDirty(true)} onSubmit={actualizarCliente} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Editar Cliente y Medidas</h2>
               <input name="nombre" defaultValue={clienteSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
               <input name="telefono" defaultValue={clienteSeleccionado.telefono} placeholder="Teléfono (solo números)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
@@ -1658,7 +1678,7 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'nueva-tela' && (
-            <form onSubmit={guardarTela} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form onSubmit={guardarTela} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Nueva Tela</h2>
               <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
               <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
@@ -1667,8 +1687,8 @@ export default function App() {
               <input name="precio" type="number" min="0" placeholder="Precio por metro ($)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
                
               <div className="mb-4">
-                <label className="block text-xs text-stone-400 mb-1">Foto de la Tela</label>
-                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+                <label className="block text-xs text-stone-400 mb-1">Foto de la Tela (Opcional)</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
               </div>
 
               <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Tela</button>
@@ -1676,16 +1696,24 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'nuevo-avio' && (
-            <form onSubmit={guardarAvio} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form onSubmit={guardarAvio} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Nuevo Avío</h2>
               <input name="nombre" placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-              <input name="desc" placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-              <input name="uso" placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-              <input name="stock" placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              
+              <select name="tipo" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-white">
+                <option value="">Seleccionar tipo (Opcional)</option>
+                <option value="Fijo">Fijo</option>
+                <option value="Desmontable">Desmontable</option>
+                <option value="Por metro">Por metro</option>
+              </select>
+
+              <input name="centimetros" placeholder="Centímetros (cm, opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="cantidad" placeholder="Cantidad (opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" placeholder="Stock (opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
                
               <div className="mb-4">
-                <label className="block text-xs text-stone-400 mb-1">Foto del Avío</label>
-                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+                <label className="block text-xs text-stone-400 mb-1">Foto del Avío (Opcional)</label>
+                <input name="fotoArchivo" type="file" accept="image/*" className="w-full bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-xs text-stone-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
               </div>
 
               <button type="submit" disabled={isSaving} className="w-full mt-6 bg-white text-stone-950 py-3 rounded-xl font-bold">Guardar Avío</button>
@@ -1693,7 +1721,7 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'editar-tela' && telaSeleccionada && (
-            <form onSubmit={actualizarTelaEditada} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form onSubmit={actualizarTelaEditada} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Editar Tela</h2>
               <input name="nombre" defaultValue={telaSeleccionada.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
               <input name="desc" defaultValue={telaSeleccionada.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
@@ -1711,12 +1739,20 @@ export default function App() {
         )}
 
         {esAdmin && vista === 'editar-avio' && avioSeleccionado && (
-            <form onSubmit={actualizarAvioEditado} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
+            <form onSubmit={actualizarAvioEditado} onKeyDown={handleKeyDownEnter} className="bg-stone-900/40 p-6 md:p-8 rounded-3xl border border-stone-800 max-w-lg mx-auto">
               <h2 className="text-2xl font-bold mb-6">Editar Avío</h2>
               <input name="nombre" defaultValue={avioSeleccionado.nombre} placeholder="Nombre" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
-              <input name="desc" defaultValue={avioSeleccionado.descripcion} placeholder="Descripción" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-              <input name="uso" defaultValue={avioSeleccionado.uso} placeholder="Uso" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
-              <input name="stock" defaultValue={avioSeleccionado.stock} placeholder="Stock" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              
+              <select name="tipo" defaultValue={avioSeleccionado.tipo || ''} className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none text-white">
+                <option value="">Seleccionar tipo (Opcional)</option>
+                <option value="Fijo">Fijo</option>
+                <option value="Desmontable">Desmontable</option>
+                <option value="Por metro">Por metro</option>
+              </select>
+
+              <input name="centimetros" defaultValue={avioSeleccionado.centimetros || ''} placeholder="Centímetros (cm, opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="cantidad" defaultValue={avioSeleccionado.cantidad || ''} placeholder="Cantidad (opcional)" type="number" min="0" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
+              <input name="stock" defaultValue={avioSeleccionado.stock} placeholder="Stock (opcional)" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" />
                
               <div className="mb-4">
                 <label className="block text-xs text-stone-400 mb-1">Cambiar Foto (Opcional)</label>
@@ -1751,7 +1787,7 @@ export default function App() {
                         >
                           ✕
                         </button>
-                        <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }} />
+                        {t.foto && <img src={t.foto} alt={t.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }} />}
                         <div className="p-4">
                           <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setTelaSeleccionada(t); cambiarVista('detalle-tela'); }}>{t.nombre}</h3>
                           <p className="text-xs text-stone-400">{t.descripcion} - {t.uso}</p>
@@ -1777,7 +1813,7 @@ export default function App() {
           <div>
             <input 
               type="text" 
-              placeholder="Buscar avío por nombre, descripción o uso..." 
+              placeholder="Buscar avío por nombre o tipo..." 
               className="w-full bg-stone-900/50 border border-stone-800 p-4 rounded-2xl mb-6 outline-none text-sm text-white backdrop-blur-md" 
               value={busquedaAvios}
               onChange={(e) => setBusquedaAvios(e.target.value)} 
@@ -1797,10 +1833,10 @@ export default function App() {
                         >
                           ✕
                         </button>
-                        <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />
+                        {a.foto && <img src={a.foto} alt={a.nombre} className="w-full h-32 object-cover cursor-pointer" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }} />}
                         <div className="p-4">
                           <h3 className="font-bold cursor-pointer hover:underline" onClick={() => { setAvioSeleccionado(a); cambiarVista('detalle-avio'); }}>{a.nombre}</h3>
-                          <p className="text-xs text-stone-400">{a.descripcion} - {a.uso}</p>
+                          <p className="text-xs text-stone-400">Tipo: {a.tipo || 'N/A'} {a.centimetros ? `- ${a.centimetros} cm` : ''} {a.cantidad ? `- Cant: ${a.cantidad}` : ''}</p>
                           <div className="flex items-center gap-2 mt-2">
                               <span className="text-xs text-stone-400">Stock:</span>
                               <input
@@ -1821,7 +1857,7 @@ export default function App() {
         {esAdmin && vista === 'detalle-tela' && telaSeleccionada && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
             <button onClick={() => cambiarVista('catalogo')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
-            <img src={telaSeleccionada.foto} alt={telaSeleccionada.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
+            {telaSeleccionada.foto && <img src={telaSeleccionada.foto} alt={telaSeleccionada.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />}
             <h2 className="text-2xl font-bold mb-2">{telaSeleccionada.nombre}</h2>
             <p className="text-stone-400 text-sm mb-2"><strong>Descripción:</strong> {telaSeleccionada.descripcion}</p>
             <p className="text-stone-400 text-sm mb-2"><strong>Uso:</strong> {telaSeleccionada.uso}</p>
@@ -1834,10 +1870,11 @@ export default function App() {
         {esAdmin && vista === 'detalle-avio' && avioSeleccionado && (
           <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-6 md:p-8 rounded-3xl max-w-xl mx-auto relative">
             <button onClick={() => cambiarVista('catalogo-avios')} className="absolute top-4 right-4 text-stone-400 hover:text-white">Volver</button>
-            <img src={avioSeleccionado.foto} alt={avioSeleccionado.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />
+            {avioSeleccionado.foto && <img src={avioSeleccionado.foto} alt={avioSeleccionado.nombre} className="w-full h-48 object-cover rounded-2xl mb-6 border border-stone-800" />}
             <h2 className="text-2xl font-bold mb-2">{avioSeleccionado.nombre}</h2>
-            <p className="text-stone-400 text-sm mb-2"><strong>Descripción:</strong> {avioSeleccionado.descripcion}</p>
-            <p className="text-stone-400 text-sm mb-2"><strong>Uso:</strong> {avioSeleccionado.uso}</p>
+            <p className="text-stone-400 text-sm mb-2"><strong>Tipo:</strong> {avioSeleccionado.tipo || 'N/A'}</p>
+            <p className="text-stone-400 text-sm mb-2"><strong>Centímetros:</strong> {avioSeleccionado.centimetros || 'N/A'}</p>
+            <p className="text-stone-400 text-sm mb-2"><strong>Cantidad:</strong> {avioSeleccionado.cantidad || 'N/A'}</p>
             <p className="text-stone-400 text-sm mb-6"><strong>Stock:</strong> {avioSeleccionado.stock}</p>
             <button onClick={() => cambiarVista('editar-avio')} className="w-full bg-white text-stone-950 py-3 rounded-xl font-bold">Editar Avío</button>
           </div>
@@ -1965,8 +2002,8 @@ export default function App() {
                         } finally {
                           setIsSaving(false);
                         }
-                      }} className="flex flex-col sm:flex-row gap-2 mt-1">
-                        <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" required />
+                      }} onKeyDown={handleKeyDownEnter} className="flex flex-col sm:flex-row gap-2 mt-1">
+                        <input name="nuevaFotoArchivo" type="file" accept="image/*" className="w-full bg-stone-900/50 p-2 rounded-xl border border-stone-800 outline-none text-xs text-stone-300 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-stone-800 file:text-white hover:file:bg-stone-700 cursor-pointer" />
                         <button type="submit" className="bg-stone-800 px-4 py-2 rounded-xl text-xs border border-stone-700 hover:bg-stone-700 font-medium">Agregar</button>
                       </form>
                     </div>
@@ -1977,7 +2014,7 @@ export default function App() {
 
             <div className="print-ficha-exclusiva hidden">
               <div className="border-b-2 border-black pb-4 mb-6">
-                <h1 className="text-3xl font-bold tracking-tight text-black">ATELIER - FICHA DE CLIENTE</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-black">ATELIER KAMURINA - FICHA DE CLIENTE</h1>
               </div>
               <div className="mb-6 space-y-1">
                 <p className="text-xl font-bold text-black">Cliente: {clienteSeleccionado.nombre}</p>
@@ -2028,7 +2065,7 @@ export default function App() {
                 <input type="number" min="0" placeholder="Precio Personalizado ($)" value={calc.precioPersonalizado || ''} onChange={e => setCalc({...calc, precioPersonalizado: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none sm:col-span-2" />
               </div>
               <div className="text-2xl font-bold mb-6 text-center">Total a Cobrar: ${precioFinal.toLocaleString()}</div>
-              <form onSubmit={asignarPrecioAPedido} className="border-t border-stone-800 pt-6">
+              <form onSubmit={asignarPrecioAPedido} onKeyDown={handleKeyDownEnter} className="border-t border-stone-800 pt-6">
                 <label className="block text-sm text-stone-400 mb-2">Asignar a pedido:</label>
                 <select name="pedidoId" className="w-full bg-stone-950/50 p-3 rounded-xl border border-stone-800 mb-4 text-white outline-none">
                   {pedidosParaCalculadora.map(p => <option key={p.id} value={p.id}>{p.cliente} - {p.prenda}</option>)}
