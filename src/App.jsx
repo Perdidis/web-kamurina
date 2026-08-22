@@ -150,6 +150,12 @@ export default function App() {
         setUser(null);
         setEsAdmin(false);
         setLoadingRol(false);
+        // Limpiamos los estados al salir para evitar fugas de memoria
+        setClientes(INITIAL_CLIENTES);
+        setPedidos(INITIAL_PEDIDOS);
+        setTelas(INITIAL_TELAS);
+        setAvios(INITIAL_AVIOS);
+        setVista('dashboard');
       }
       setAuthLoading(false);
     });
@@ -261,20 +267,12 @@ export default function App() {
     }, (err) => console.error("Error leyendo avios:", err));
 
     return () => {
-      unsubClientes();
-      unsubPedidos();
-      unsubTelas();
-      unsubAvios();
+      if(unsubClientes) unsubClientes();
+      if(unsubPedidos) unsubPedidos();
+      if(unsubTelas) unsubTelas();
+      if(unsubAvios) unsubAvios();
     };
   }, [user]);
-
-  const metrosCalculados = calc.cm / 100;
-  const materiales = (metrosCalculados * calc.costoMetro) + calc.avios;
-  const manoObra = calc.horas * calc.valorHora;
-  const costoTotal = materiales + manoObra;
-  const calculoNormal = costoTotal * (1 + calc.margen / 100);
-  const precioFinal = calc.precioPersonalizado > 0 ? calc.precioPersonalizado : calculoNormal;
-  const gananciaNeta = manoObra + (precioFinal - costoTotal);
 
   const borrarCliente = async (id) => {
     try {
@@ -643,7 +641,7 @@ export default function App() {
     }
   };
 
-  const asignarPrecioAPedido = async (e) => {
+  const asignarPrecioAPedido = async (e, precioFinal, materiales, manoObra) => {
     e.preventDefault();
     if (precioFinal < 0) {
       mostrarToast("⚠️ El precio no puede ser negativo");
@@ -846,95 +844,12 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
-      setEsAdmin(false);
-      setVista('dashboard');
+      // Solo pedimos a Firebase que cierre sesión. 
+      // El listener "onAuthStateChanged" se encargará de resetear los estados de forma segura.
     } catch (err) {
       console.error("Error al salir:", err);
     }
   };
-
-  const pedidosVisibles = pedidos.filter(p => {
-    if (p.ocultoDashboard) return false;
-    
-    if (!esAdmin) {
-      const nombreUsuario = user.displayName || user.email;
-      if (p.cliente !== nombreUsuario) return false;
-    } else {
-      if (p.estado === 'Pendiente de Aprobación' || p.estado === 'Rechazado') return false;
-    }
-
-    const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
-    const textoBusqueda = busquedaDashboard.trim().toLowerCase();
-    const coincideBusqueda = !textoBusqueda || 
-      p.cliente.toLowerCase().includes(textoBusqueda) || 
-      p.prenda.toLowerCase().includes(textoBusqueda) ||
-      p.id.toLowerCase().includes(textoBusqueda);
-    return coincideFiltro && coincideBusqueda;
-  }).sort((a, b) => {
-    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
-    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
-    return timeB - timeA;
-  });
-
-  const solicitudesPendientesAdmin = pedidos.filter(p => {
-    if (p.ocultoDashboard) return false;
-    return p.estado === 'Pendiente de Aprobación';
-  }).sort((a, b) => {
-    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
-    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
-    return timeB - timeA;
-  });
-
-  const pedidosParaCalculadora = pedidos.filter(p => !p.ocultoDashboard).sort((a, b) => {
-    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
-    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
-    return timeB - timeA;
-  });
-
-  const totalPedidosActivos = pedidos.filter(p => !p.ocultoDashboard && p.estado !== 'Rechazado' && p.estado !== 'Pendiente de Aprobación' && p.estado !== 'Entregado con éxito').length;
-  const ingresosDelMes = pedidos.reduce((acc, p) => {
-    if (p.ocultoDashboard || !p.precio || p.precio <= 0) return acc;
-    const sumaPagos = (p.pagos || []).reduce((sub, pay) => sub + pay.monto, 0);
-    return acc + (sumaPagos > 0 ? sumaPagos : 0);
-  }, 0);
-
-  const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
-
-  const telasFiltradas = telas.filter(t => {
-    const texto = busquedaTelas.toLowerCase();
-    return (
-      (t.nombre && t.nombre.toLowerCase().includes(texto)) ||
-      (t.descripcion && t.descripcion.toLowerCase().includes(texto)) ||
-      (t.uso && t.uso.toLowerCase().includes(texto)) ||
-      (t.precio && String(t.precio).includes(texto))
-    );
-  });
-
-  const aviosFiltrados = avios.filter(a => {
-    const texto = busquedaAvios.toLowerCase();
-    return (
-      (a.nombre && a.nombre.toLowerCase().includes(texto)) ||
-      (a.tipo && a.tipo.toLowerCase().includes(texto)) ||
-      (a.precio && String(a.precio).includes(texto))
-    );
-  });
-
-  const gananciasPorMes = pedidos.reduce((acc, p) => {
-    if (p.precio <= 0) return acc;
-    const mesAnio = p.entrega ? p.entrega.slice(0, 7) : new Date(p.createdAt || Date.now()).toISOString().slice(0, 7);
-    const gastos = p.gastos || 0;
-    const gananciaPedido = p.precio - gastos;
-    
-    if (!acc[mesAnio]) {
-      acc[mesAnio] = { ingresos: 0, ganancia: 0, cantidad: 0, pedidos: [] };
-    }
-    acc[mesAnio].ingresos += p.precio;
-    acc[mesAnio].ganancia += gananciaPedido;
-    acc[mesAnio].cantidad += 1;
-    acc[mesAnio].pedidos.push({ ...p, gananciaPedido });
-    return acc;
-  }, {});
 
   if (authLoading || loadingRol) {
     return <div className="min-h-screen bg-stone-950 flex justify-center items-center text-stone-400">Cargando aplicación...</div>;
@@ -1013,6 +928,103 @@ export default function App() {
         </div>
     );
   }
+
+  // --- VARIABLES Y CÁLCULOS SEGUROS ---
+  // Ahora todo esto se procesa SOLO SI el usuario existe. ¡Adiós pantallazo blanco!
+
+  const metrosCalculados = calc.cm / 100;
+  const materiales = (metrosCalculados * calc.costoMetro) + calc.avios;
+  const manoObra = calc.horas * calc.valorHora;
+  const costoTotal = materiales + manoObra;
+  const calculoNormal = costoTotal * (1 + calc.margen / 100);
+  const precioFinal = calc.precioPersonalizado > 0 ? calc.precioPersonalizado : calculoNormal;
+  const gananciaNeta = manoObra + (precioFinal - costoTotal);
+
+  const pedidosVisibles = pedidos.filter(p => {
+    if (p.ocultoDashboard) return false;
+    
+    if (!esAdmin) {
+      // ESTO ERA LO QUE ROMPÍA LA APP AL CERRAR SESIÓN. 
+      // Si el bloque no estuviera abajo del login, `user` sería null y user.displayName lanzaría un TypeError.
+      const nombreUsuario = user.displayName || user.email; 
+      if (p.cliente !== nombreUsuario) return false;
+    } else {
+      if (p.estado === 'Pendiente de Aprobación' || p.estado === 'Rechazado') return false;
+    }
+
+    const coincideFiltro = filtroEstadoDashboard === 'TODOS' || p.estado === filtroEstadoDashboard;
+    const textoBusqueda = busquedaDashboard.trim().toLowerCase();
+    const coincideBusqueda = !textoBusqueda || 
+      p.cliente.toLowerCase().includes(textoBusqueda) || 
+      p.prenda.toLowerCase().includes(textoBusqueda) ||
+      p.id.toLowerCase().includes(textoBusqueda);
+    return coincideFiltro && coincideBusqueda;
+  }).sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
+    return timeB - timeA;
+  });
+
+  const solicitudesPendientesAdmin = pedidos.filter(p => {
+    if (p.ocultoDashboard) return false;
+    return p.estado === 'Pendiente de Aprobación';
+  }).sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
+    return timeB - timeA;
+  });
+
+  const pedidosParaCalculadora = pedidos.filter(p => !p.ocultoDashboard).sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.id.replace('PED-', '')) || 0;
+    const timeB = Number(b.createdAt) || Number(b.id.replace('PED-', '')) || 0;
+    return timeB - timeA;
+  });
+
+  const totalPedidosActivos = pedidos.filter(p => !p.ocultoDashboard && p.estado !== 'Rechazado' && p.estado !== 'Pendiente de Aprobación' && p.estado !== 'Entregado con éxito').length;
+  
+  const ingresosDelMes = pedidos.reduce((acc, p) => {
+    if (p.ocultoDashboard || !p.precio || p.precio <= 0) return acc;
+    const sumaPagos = (p.pagos || []).reduce((sub, pay) => sub + pay.monto, 0);
+    return acc + (sumaPagos > 0 ? sumaPagos : 0);
+  }, 0);
+
+  const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+
+  const telasFiltradas = telas.filter(t => {
+    const texto = busquedaTelas.toLowerCase();
+    return (
+      (t.nombre && t.nombre.toLowerCase().includes(texto)) ||
+      (t.descripcion && t.descripcion.toLowerCase().includes(texto)) ||
+      (t.uso && t.uso.toLowerCase().includes(texto)) ||
+      (t.precio && String(t.precio).includes(texto))
+    );
+  });
+
+  const aviosFiltrados = avios.filter(a => {
+    const texto = busquedaAvios.toLowerCase();
+    return (
+      (a.nombre && a.nombre.toLowerCase().includes(texto)) ||
+      (a.tipo && a.tipo.toLowerCase().includes(texto)) ||
+      (a.precio && String(a.precio).includes(texto))
+    );
+  });
+
+  const gananciasPorMes = pedidos.reduce((acc, p) => {
+    if (p.precio <= 0) return acc;
+    const mesAnio = p.entrega ? p.entrega.slice(0, 7) : new Date(p.createdAt || Date.now()).toISOString().slice(0, 7);
+    const gastos = p.gastos || 0;
+    const gananciaPedido = p.precio - gastos;
+    
+    if (!acc[mesAnio]) {
+      acc[mesAnio] = { ingresos: 0, ganancia: 0, cantidad: 0, pedidos: [] };
+    }
+    acc[mesAnio].ingresos += p.precio;
+    acc[mesAnio].ganancia += gananciaPedido;
+    acc[mesAnio].cantidad += 1;
+    acc[mesAnio].pedidos.push({ ...p, gananciaPedido });
+    return acc;
+  }, {});
+
 
   return (
     <div translate="no" className="notranslate min-h-screen bg-stone-950 text-white p-4 md:p-8 font-sans selection:bg-white selection:text-stone-950">
@@ -1660,14 +1672,14 @@ export default function App() {
                </select>
               ) : (
                <div className="mb-4 bg-stone-950 p-3 rounded-xl border border-stone-800 text-sm text-stone-400">
-                  Cliente: <span className="text-white font-bold">{user.displayName || user.email}</span>
+                  Cliente: <span className="text-white font-bold">{user?.displayName || user?.email}</span>
                </div>
               )}
 
               <input name="prenda" placeholder="¿Qué prenda deseas mandar a hacer?" className="w-full bg-stone-950 p-3 rounded-xl mb-4 border border-stone-800 outline-none" required />
                
               {!esAdmin && (() => {
-              const nombreActual = user.displayName || user.email;
+              const nombreActual = user?.displayName || user?.email || "";
               const clienteExistente = clientes.find(c => c.nombre && c.nombre.toLowerCase() === nombreActual.toLowerCase());
               const tieneTelefonoRegistrado = clienteExistente && clienteExistente.telefono && clienteExistente.telefono.trim() !== '';
 
@@ -2204,7 +2216,7 @@ export default function App() {
                 <input type="number" min="0" placeholder="Precio Personalizado ($)" value={calc.precioPersonalizado || ''} onChange={e => setCalc({...calc, precioPersonalizado: Number(e.target.value)})} className="bg-stone-950/50 p-3 rounded-xl border border-stone-800 outline-none sm:col-span-2" />
               </div>
               <div className="text-2xl font-bold mb-6 text-center">Total a Cobrar: ${precioFinal.toLocaleString()}</div>
-              <form onSubmit={asignarPrecioAPedido} onKeyDown={handleKeyDownEnter} className="border-t border-stone-800 pt-6">
+              <form onSubmit={(e) => asignarPrecioAPedido(e, precioFinal, materiales, manoObra)} onKeyDown={handleKeyDownEnter} className="border-t border-stone-800 pt-6">
                 <label className="block text-sm text-stone-400 mb-2">Asignar a pedido:</label>
                 <select name="pedidoId" className="w-full bg-stone-950/50 p-3 rounded-xl border border-stone-800 mb-4 text-white outline-none">
                   {pedidosParaCalculadora.map(p => <option key={p.id} value={p.id}>{p.cliente} - {p.prenda}</option>)}
