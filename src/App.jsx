@@ -147,6 +147,7 @@ export default function App() {
         setLoadingRol(false);
         window.history.replaceState({ vista: 'dashboard' }, '');
       } else {
+        setUser(null);
         setEsAdmin(false);
         setLoadingRol(false);
       }
@@ -845,6 +846,9 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
+      setEsAdmin(false);
+      setVista('dashboard');
     } catch (err) {
       console.error("Error al salir:", err);
     }
@@ -1282,12 +1286,20 @@ export default function App() {
                       )}
 
                       {(() => {
-                        const telefonoContacto = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono;
-                        if (!telefonoContacto) return null;
+                        let telefonoDestino = '';
+                        if (esAdmin) {
+                          telefonoDestino = p.telefono || clientes.find(c => c.nombre.toLowerCase() === p.cliente.toLowerCase())?.telefono || '';
+                        } else {
+                          telefonoDestino = '3435302448';
+                        }
+
+                        if (!telefonoDestino) return null;
+
                         const mensaje = esAdmin 
                           ? `Hola ${p.cliente}, te escribo desde Atelier Kamurina por tu pedido de ${p.prenda} para coordinar detalles y fotos.` 
                           : `Hola, le escribo por mi pedido de ${p.prenda} (${p.id}) en Atelier Kamurina.`;
-                        const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+                        
+                        const urlWhatsapp = `https://wa.me/${telefonoDestino.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
 
                         return (
                           <a
@@ -1528,12 +1540,20 @@ export default function App() {
             </div>
 
             {(() => {
-              const telefonoContacto = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono;
-              if (!telefonoContacto) return null;
+              let telefonoDestino = '';
+              if (esAdmin) {
+                telefonoDestino = pedidoSeleccionado.telefono || clientes.find(c => c.nombre.toLowerCase() === pedidoSeleccionado.cliente.toLowerCase())?.telefono || '';
+              } else {
+                telefonoDestino = '3435302448';
+              }
+
+              if (!telefonoDestino) return null;
+
               const mensaje = esAdmin 
                 ? `Hola ${pedidoSeleccionado.cliente}, te escribo desde Atelier Kamurina por tu pedido de ${pedidoSeleccionado.prenda}.` 
                 : `Hola, le escribo por los detalles de mi pedido de ${pedidoSeleccionado.prenda} (${pedidoSeleccionado.id}).`;
-              const urlWhatsapp = `https://wa.me/${telefonoContacto.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+              
+              const urlWhatsapp = `https://wa.me/${telefonoDestino.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
 
               return (
                 <a
