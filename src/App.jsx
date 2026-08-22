@@ -1105,7 +1105,7 @@ export default function App() {
             </>
           )}
 
-          <button onClick={handleLogout} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Salir</button>
+          <button onClick={handleLogout} className="text-red-400 text-xs ml-auto md:ml-4 whitespace-nowrap">Cerrar sesion</button>
         </div>
       </nav>
 
